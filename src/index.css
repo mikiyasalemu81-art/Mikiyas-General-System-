@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-bg-primary: #ffffff;
+    --color-bg-secondary: #f0f9ff; /* light blue */
+    --color-text-primary: #0f172a; /* high contrast black/slate */
+    --color-text-secondary: #475569;
+    --color-accent-blue: #0284c7;
+    --color-accent-red: #f43f5e;
+    --color-accent-green: #10b981;
+    --color-accent-amber: #f59e0b;
+  }
+
+  .dark {
+    --color-bg-primary: #090d16;
+    --color-bg-secondary: #0f172a;
+    --color-text-primary: #f8fafc;
+    --color-text-secondary: #94a3b8;
+    --color-accent-blue: #38bdf8;
+    --color-accent-red: #fb7185;
+    --color-accent-green: #34d399;
+    --color-accent-amber: #fbbf24;
+  }
+
+  /* Ultra-smooth theme transition */
+  .transition-theme,
+  .transition-theme *,
+  .transition-theme *::before,
+  .transition-theme *::after {
+    transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+    transition-duration: 280ms;
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.4);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.7);
+  }
+}
+
+/* ADHD focus pill animations and cards */
+.adhd-card {
+  @apply rounded-2xl border transition-all duration-200;
+}
+
+.adhd-glow {
+  box-shadow: 0 0 25px -5px rgba(14, 165, 233, 0.25);
+}
+
+.adhd-glow-red {
+  box-shadow: 0 0 25px -5px rgba(244, 63, 94, 0.25);
+}
+
+.adhd-glow-green {
+  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.25);
+}
