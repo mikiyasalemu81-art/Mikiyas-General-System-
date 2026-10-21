@@ -12,6 +12,11 @@ export interface FinancialStats {
   recentTransactionsCount: number;
 }
 
+export interface AdvisorResponse {
+  content: string;
+  reasoning?: string;
+}
+
 export function computeFinancialStats(transactions: Transaction[]): FinancialStats {
   let totalIncome = 0;
   let totalExpenses = 0;
@@ -56,8 +61,8 @@ export function getDailyFinancialTip(transactions: Transaction[]): { title: stri
   if (transactions.length === 0) {
     return {
       title: 'Fresh Ledger Ready (0 ETB)',
-      advice: 'Your ledger is clean and ready. Add your income when you get paid, or record transport/client expenses when money goes out.',
-      impact: 'If you record every small taxi ride and client payment in ETB, you maintain 100% financial awareness.',
+      advice: 'Your ledger starts at 0 ETB. When clients pay you, tap Record Entry (+ Income). When you take a taxi or buy gear, tap (- Expense).',
+      impact: 'If you record every transaction in ETB as it happens, you build complete financial clarity.',
       severity: 'info',
     };
   }
@@ -100,72 +105,47 @@ export function getDailyFinancialTip(transactions: Transaction[]): { title: stri
 }
 
 /**
- * Intelligent Rule-based Fallback (in ETB)
- */
-export function getLocalFinancialAdvice(query: string, transactions: Transaction[]): string {
-  const clean = query.toLowerCase().trim();
-  const stats = computeFinancialStats(transactions);
-
-  if (clean.includes('mistake') || clean.includes('gain') || clean.includes('why')) {
-    if (stats.totalIncome === 0 && stats.totalExpenses === 0) {
-      return `Your ledger currently starts at 0 ETB. To track mistakes or gains, begin by logging your client milestones and daily transport receipts. If you charge 20% upfront on client proposals, you gain immediate cash stability.`;
-    }
-    if (stats.totalExpenses > stats.totalIncome) {
-      return `Your main cash leak is that expenses (ETB ${stats.totalExpenses.toLocaleString()}) exceed recorded revenue (ETB ${stats.totalIncome.toLocaleString()}). If you cut discretionary transport by 25%, you save ETB ${Math.round(stats.totalExpenses * 0.25).toLocaleString()} to eliminate the deficit.`;
-    }
-    return `Looking at your data: You have earned ETB ${stats.totalIncome.toLocaleString()} and spent ETB ${stats.totalExpenses.toLocaleString()} (Net: +ETB ${stats.netBalance.toLocaleString()}). Your main area to optimize is client retainer pricing. If you bundle recurring maintenance contracts, you gain predictable monthly ETB cashflow.`;
-  }
-
-  if (clean.includes('transport') || clean.includes('ride') || clean.includes('taxi') || clean.includes('fuel')) {
-    const weeklyTransport = stats.transportExpenses;
-    const cut20 = Math.round(weeklyTransport * 0.25);
-    return `Transport represents ETB ${weeklyTransport.toLocaleString()} (${stats.transportPercentage}% of expenses). If you bundle meetings into dedicated commute days in Addis, you save ETB ${cut20.toLocaleString()} immediately.`;
-  }
-
-  const savingTarget = Math.round(stats.totalExpenses * 0.2);
-  return `Based on your ETB ${stats.totalIncome.toLocaleString()} income vs ETB ${stats.totalExpenses.toLocaleString()} expenses (Net: ETB ${stats.netBalance.toLocaleString()}): If you cut 15% of discretionary transit and client outing costs, you save ETB ${savingTarget > 0 ? savingTarget : 500} every two weeks.`;
-}
-
-/**
- * Groq AI Financial Advisor with Real Llama / GPT-OSS Brain
- * Supports multi-turn conversation and deep contextual financial reasoning in ETB!
+ * Groq AI Financial Advisor with Real Thinking Brain
+ * Uses Groq's high-intelligence reasoning model (openai/gpt-oss-120b)
+ * Returns both the internal analytical thinking process and the final actionable answer in ETB.
  */
 export async function queryGroqAdvisor(
   userMessage: string,
   history: ChatMessage[],
   transactions: Transaction[],
   apiKeyOverride?: string
-): Promise<string> {
+): Promise<AdvisorResponse> {
   const apiKey = (apiKeyOverride || storageService.getGroqApiKey() || DEFAULT_GROQ_API_KEY).trim();
   const stats = computeFinancialStats(transactions);
 
   // Compile recent transactions summary in ETB
-  const recentTxList = transactions.slice(0, 10).map(t => 
+  const recentTxList = transactions.slice(0, 15).map(t => 
     `- [${t.date}] ${t.type.toUpperCase()}: ETB ${t.amount.toLocaleString()} | Category: ${t.category} | Note: "${t.note}"`
-  ).join('\n') || 'No transactions recorded yet (Current balance is 0 ETB).';
+  ).join('\n') || 'Ledger is currently empty (0 ETB balance).';
 
-  const systemPrompt = `You are the expert personal financial advisor and business strategist for Mikiyas, an ambitious freelance software developer living and working in Ethiopia (operating Imako Solution).
-Mikiyas has ADHD, so he values clear, concise, visual, and highly actionable answers over fluff.
-All currency must ALWAYS be in Ethiopian Birr (ETB).
+  const systemPrompt = `You are the dedicated Senior Financial Advisor & Business Strategist for Mikiyas.
+Mikiyas is a talented freelance developer and founder of Imako Solution living and working in Ethiopia.
+Mikiyas has ADHD, so he expects deep, intelligent, analytical reasoning, high visual structure (markdown tables, bullet points, bold numbers), and no fluff.
+ALL currency MUST ALWAYS be in Ethiopian Birr (ETB). Never use $ or USD unless explicitly asked to do a conversion.
 
-CURRENT FINANCIAL DASHBOARD IN ETB:
+MIKIYAS'S LIVE FINANCIAL DASHBOARD (IN ETB):
 - Total Income: ETB ${stats.totalIncome.toLocaleString()}
 - Total Expenses: ETB ${stats.totalExpenses.toLocaleString()}
 - Net Balance: ETB ${stats.netBalance.toLocaleString()}
-- Transport Expenses: ETB ${stats.transportExpenses.toLocaleString()} (${stats.transportPercentage}% of total outflow)
-- Client Expenses: ETB ${stats.clientExpenses.toLocaleString()}
-- Total Transactions Tracked: ${stats.recentTransactionsCount}
-RECENT TRANSACTIONS:
+- Transport Spending: ETB ${stats.transportExpenses.toLocaleString()} (${stats.transportPercentage}% of outflow)
+- Client Spending: ETB ${stats.clientExpenses.toLocaleString()}
+- Total Recorded Entries: ${stats.recentTransactionsCount}
+RECORDED LEDGER:
 ${recentTxList}
 
-YOUR GOALS:
-1. Provide a sharp, intelligent, and personalized answer to ANY question Mikiyas asks—whether it's about spending habits, pricing client projects, understanding mistakes, investments in Ethiopia, transport costs in Addis Ababa, or general business finance.
-2. Structure your answer with clear bullet points and high-contrast numbers in ETB.
-3. Always include an actionable takeaway phrased like:
-   "💡 Action Step: If you cut X, you save Y ETB..." or "💡 Strategy: If you charge X ETB upfront, you gain..."
-4. Never mention US dollars or USDT unless Mikiyas explicitly asks for currency conversion. Always prioritize ETB.`;
+DIRECTIVES:
+1. THINK THROUGH THE USER'S QUESTION DEEPLY. If he asks "what is my mistake to gain this amount of money?", analyze what might be holding back his earnings in Ethiopia (e.g. under-pricing client projects, not asking for 30-50% upfront deposits on Imako deliverables, transport cost leaks in Addis Ababa, or lack of monthly retainers).
+2. Give a rich, thorough, multi-section response formatted in clean markdown:
+   - **Direct Assessment**: What the numbers tell us right now.
+   - **Mistakes / Inefficiencies Identified**: Where money or focus is being lost.
+   - **Actionable ETB Strategy**: Concrete calculations and pricing models (e.g., charging 30,000–80,000+ ETB per web app, milestone breakdown).
+   - **Takeaway Rule**: Format a bold callout: "💡 Pro Tip: If you cut X, you save Y ETB..." or "💡 Growth Rule: If you charge X ETB upfront, you gain..."`;
 
-  // Build message chain
   const messages = [
     { role: 'system', content: systemPrompt },
     ...history.slice(-6).map(h => ({
@@ -175,12 +155,13 @@ YOUR GOALS:
     { role: 'user', content: userMessage }
   ];
 
-  // Try primary model (openai/gpt-oss-120b), then fallback to openai/gpt-oss-20b or qwen/qwen3.8-27b
   const candidateModels = [
     'openai/gpt-oss-120b',
     'openai/gpt-oss-20b',
     'qwen/qwen3.8-27b'
   ];
+
+  let lastError: any = null;
 
   for (const model of candidateModels) {
     try {
@@ -193,27 +174,38 @@ YOUR GOALS:
         body: JSON.stringify({
           model,
           messages,
-          temperature: 0.6,
-          max_tokens: 800,
+          temperature: 0.7,
+          max_tokens: 1200,
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.warn(`Groq model ${model} failed with:`, errorData);
-        continue; // try next candidate model
+        const errorJson = await response.json().catch(() => ({}));
+        lastError = errorJson;
+        console.warn(`Groq model ${model} error:`, errorJson);
+        continue;
       }
 
       const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
+      const choice = data.choices?.[0];
+      const content = choice?.message?.content;
+      const reasoning = choice?.message?.reasoning;
+
       if (content && content.trim().length > 0) {
-        return content.trim();
+        return {
+          content: content.trim(),
+          reasoning: reasoning && reasoning.trim().length > 0 ? reasoning.trim() : undefined,
+        };
       }
     } catch (err) {
-      console.warn(`Error querying Groq model ${model}:`, err);
+      lastError = err;
+      console.warn(`Fetch error for ${model}:`, err);
     }
   }
 
-  // Graceful fallback to intelligent local ETB advice if network/API unavailable
-  return getLocalFinancialAdvice(userMessage, transactions);
+  // If all models failed or network error occurred, explain the real issue clearly
+  return {
+    content: `I could not connect to the Groq AI service. Please check your internet connection or verify your Groq API key in the settings above.\n\nError details: ${JSON.stringify(lastError || 'Network request failed')}`,
+    reasoning: `Attempted models: ${candidateModels.join(', ')}. Encountered error: ${String(lastError)}`,
+  };
 }

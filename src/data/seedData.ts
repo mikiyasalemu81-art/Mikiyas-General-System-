@@ -6,7 +6,7 @@ export const SEED_PROFILE: UserProfile = {
   theme: 'light',
 };
 
-// Common distraction apps with permanent blocking & limit capabilities
+// Apps with real URLs and domain lists for OS-level and in-app blocking
 export const SEED_APPS: BlockedApp[] = [
   {
     id: 'instagram',
@@ -14,8 +14,9 @@ export const SEED_APPS: BlockedApp[] = [
     category: 'social',
     icon: 'Camera',
     url: 'https://www.instagram.com',
-    isBlocked: true, // permanently blocked
-    blockMode: 'always', // permanent 24/7 block
+    domains: ['instagram.com', 'www.instagram.com', 'api.instagram.com', 'threads.net', 'www.threads.net'],
+    isBlocked: true,
+    blockMode: 'always',
     dailyLimitMinutes: 30,
     currentUsageMinutes: 0,
     blockedAttempts: 5,
@@ -27,6 +28,7 @@ export const SEED_APPS: BlockedApp[] = [
     category: 'social',
     icon: 'Music2',
     url: 'https://www.tiktok.com',
+    domains: ['tiktok.com', 'www.tiktok.com', 'm.tiktok.com', 'v16.tiktokcdn.com'],
     isBlocked: true,
     blockMode: 'always',
     dailyLimitMinutes: 30,
@@ -40,6 +42,7 @@ export const SEED_APPS: BlockedApp[] = [
     category: 'social',
     icon: 'PlaySquare',
     url: 'https://www.youtube.com/shorts',
+    domains: ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'],
     isBlocked: true,
     blockMode: 'limit',
     dailyLimitMinutes: 30,
@@ -52,6 +55,7 @@ export const SEED_APPS: BlockedApp[] = [
     category: 'social',
     icon: 'Share2',
     url: 'https://www.facebook.com',
+    domains: ['facebook.com', 'www.facebook.com', 'm.facebook.com', 'fb.com'],
     isBlocked: false,
     blockMode: 'always',
     dailyLimitMinutes: 30,
@@ -64,6 +68,7 @@ export const SEED_APPS: BlockedApp[] = [
     category: 'gaming',
     icon: 'Gamepad2',
     url: 'https://www.chess.com',
+    domains: ['chess.com', 'www.chess.com'],
     isBlocked: true,
     blockMode: 'limit',
     dailyLimitMinutes: 60,
@@ -76,6 +81,7 @@ export const SEED_APPS: BlockedApp[] = [
     category: 'gaming',
     icon: 'Swords',
     url: 'https://poki.com',
+    domains: ['poki.com', 'www.poki.com', 'crazygames.com'],
     isBlocked: false,
     blockMode: 'always',
     dailyLimitMinutes: 60,
@@ -130,8 +136,6 @@ export const SEED_TASKS: Task[] = [
   },
 ];
 
-// Requirement: Erase money and start at zero ETB!
-// User will add income (+) and minus expenses (-).
 export const SEED_TRANSACTIONS: Transaction[] = [];
 
 export const SEED_PROJECTS: ProjectIntake[] = [
@@ -162,12 +166,6 @@ export const SEED_PROJECTS: ProjectIntake[] = [
 Build a high-performance, single-page fintech merchant portal and dashboard for **EthioPay Financial Solutions**.
 - **Client**: EthioPay Financial Solutions
 - **Primary Deliverable**: Merchant settlement dashboard with QR payment tracking in ETB and dual-language (English/Amharic) support.
-- **Budget / Scope**: 250,000 ETB milestone project delivered via Imako Solution.
-
-## 2. Recommended Tech Stack
-- Frontend: React 18, Vite, TypeScript, Tailwind CSS, Lucide Icons, Recharts for financial analytics.
-- Currency standard: ETB (Ethiopian Birr).
-- State Management: Local reactive storage adapter service.
-- Localization: i18next supporting English ('en') and Amharic ('am').`
+- **Budget / Scope**: 250,000 ETB milestone project delivered via Imako Solution.`
   }
 ];

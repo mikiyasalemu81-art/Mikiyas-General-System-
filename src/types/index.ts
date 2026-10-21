@@ -13,7 +13,8 @@ export interface BlockedApp {
   name: string;
   category: 'social' | 'gaming' | 'other';
   icon: string;
-  url?: string; // external site url for interceptor
+  url: string; // external site url
+  domains: string[]; // domains to block in hosts/DNS
   isBlocked: boolean; // whether blocking is active
   blockMode: BlockMode; // 'always' = 24/7 permanent lock; 'limit' = blocked after daily limit
   dailyLimitMinutes: number; // in minutes (for limit mode)
@@ -51,6 +52,7 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  reasoning?: string; // AI internal thinking process
   timestamp: string;
 }
 
@@ -63,7 +65,7 @@ export interface ProjectIntake {
   budget: string;
   deadline: string;
   createdAt: string;
-  answers: Record<string, string>; // questionId -> answer
+  answers: Record<string, string>;
   generatedPrompt?: string;
 }
 

@@ -12,11 +12,7 @@ import {
   ShieldAlert, 
   Play, 
   Lock,
-  Unlock,
-  ExternalLink,
-  Flame,
-  ShieldCheck,
-  AlertTriangle
+  ExternalLink
 } from 'lucide-react';
 
 interface AppBlockCardProps {
@@ -64,6 +60,9 @@ export const AppBlockCard: React.FC<AppBlockCardProps> = ({ app }) => {
     // Functional blocking check
     const wasBlocked = recordAppLaunchAttempt(app.id);
     if (!wasBlocked) {
+      if (app.url) {
+        window.open(app.url, '_blank', 'noopener,noreferrer');
+      }
       recordAppUsage(app.id, 10);
     }
     setTimeout(() => setIsSimulating(false), 300);
@@ -239,10 +238,10 @@ export const AppBlockCard: React.FC<AppBlockCardProps> = ({ app }) => {
                   ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/20 active:scale-95'
                   : 'bg-sky-600 hover:bg-sky-700 text-white shadow-sky-600/20 active:scale-95'
               }`}
-              title="Test opening the app to trigger functional lock"
+              title={isLocked ? "Functional lock interceptor test" : "Open app in browser"}
             >
-              <Play className="w-3 h-3 fill-current" />
-              <span>{isLocked ? 'Trigger Block Test' : 'Open / Log Usage'}</span>
+              {isLocked ? <Lock className="w-3 h-3" /> : <ExternalLink className="w-3 h-3" />}
+              <span>{isLocked ? 'Launch App (Blocked)' : 'Open Web App'}</span>
             </button>
           </div>
         </div>

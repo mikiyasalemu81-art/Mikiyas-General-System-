@@ -3,17 +3,24 @@ import { useApp } from '../../context/AppContext';
 import { MetricCard } from '../common/MetricCard';
 import { AppBlockCard } from './AppBlockCard';
 import { 
+  generateWindowsBlockerBat, 
+  generateWindowsUnblockerBat, 
+  downloadFile 
+} from '../../services/systemBlocker';
+import { 
   Clock, 
   ShieldAlert, 
   AlertTriangle, 
   Info, 
-  Lock,
-  Smartphone,
-  Flame
+  Lock, 
+  Download, 
+  ShieldCheck, 
+  Terminal, 
+  CheckCircle2 
 } from 'lucide-react';
 
 export const TimeManagementTab: React.FC = () => {
-  const { apps } = useApp();
+  const { apps, addBanner } = useApp();
   const [filterCategory, setFilterCategory] = useState<'all' | 'social' | 'gaming'>('all');
 
   // Compute overview metrics
@@ -23,7 +30,6 @@ export const TimeManagementTab: React.FC = () => {
   const screenTimeFormatted = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 
   const permanentlyBlockedApps = apps.filter(a => a.isBlocked && a.blockMode === 'always');
-  const limitReachedApps = apps.filter(a => a.isBlocked && a.blockMode === 'limit' && a.currentUsageMinutes >= a.dailyLimitMinutes);
   const totalBlockedApps = apps.filter(a => a.isBlocked && (a.blockMode === 'always' || a.currentUsageMinutes >= a.dailyLimitMinutes));
 
   const appsNearOrOverLimit = apps.filter(
@@ -36,6 +42,26 @@ export const TimeManagementTab: React.FC = () => {
     if (filterCategory === 'all') return true;
     return app.category === filterCategory;
   });
+
+  const handleDownloadWindowsBlocker = () => {
+    const batContent = generateWindowsBlockerBat(apps);
+    downloadFile('block-distractions.bat', batContent);
+    addBanner({
+      type: 'info',
+      title: 'Windows Blocker Downloaded',
+      message: 'Right-click "block-distractions.bat" and choose "Run as administrator" to apply real system-wide blocking!',
+    });
+  };
+
+  const handleDownloadWindowsUnblocker = () => {
+    const batContent = generateWindowsUnblockerBat();
+    downloadFile('unblock-distractions.bat', batContent);
+    addBanner({
+      type: 'info',
+      title: 'Windows Unblocker Downloaded',
+      message: 'Run "unblock-distractions.bat" as administrator whenever you wish to restore original hosts.',
+    });
+  };
 
   return (
     <div className="space-y-6 pb-20 animate-fade-in">
@@ -92,16 +118,57 @@ export const TimeManagementTab: React.FC = () => {
         </div>
       </section>
 
-      {/* 2. PWA LIMITATION TRANSPARENCY NOTICE */}
-      <div className="p-3.5 rounded-2xl bg-sky-50/60 dark:bg-sky-950/20 border border-sky-200/80 dark:border-sky-900/40 flex items-start gap-3 text-xs text-slate-700 dark:text-slate-300">
-        <Info className="w-4 h-4 text-sky-600 dark:text-sky-400 mt-0.5 shrink-0" />
-        <div className="leading-relaxed">
-          <span className="font-bold text-slate-900 dark:text-white">Permanent Functional Barrier: </span>
-          When you toggle an app to Blocked, it stays permanently locked 24/7. Any attempt to launch or browse it triggers the Focus Lock Shield, refuses entry, and records the attempt count.
-        </div>
-      </div>
+      {/* 2. REAL OS-LEVEL SYSTEM BLOCKER (WINDOWS) */}
+      <section className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900 to-indigo-950 text-white border border-slate-800 shadow-lg space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-white">
+                  Real Windows System-Level Blocker
+                </h3>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-rose-500 text-white">
+                  Real OS Blocking
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                Blocks Instagram, TikTok, Chess.com, and Facebook across <strong className="text-white">every browser (Chrome, Edge, Firefox, Brave)</strong> and desktop app via Windows hosts.
+              </p>
+            </div>
+          </div>
 
-      {/* 3. APP BLOCKING & LIMIT CONTROLS */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleDownloadWindowsBlocker}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/30 active:scale-95 transition-all"
+            >
+              <Download className="w-4 h-4" />
+              <span>Download Real Blocker (.bat)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDownloadWindowsUnblocker}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all"
+            >
+              <span>Download Unblocker (.bat)</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center gap-2">
+          <Terminal className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+          <span>
+            <strong>How it works:</strong> Download the file, right-click and choose <strong>"Run as administrator"</strong>. Windows will reject connection to all blocked apps instantly!
+          </span>
+        </div>
+      </section>
+
+      {/* 3. TARGETED DISTRACTION APPS */}
       <section className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>

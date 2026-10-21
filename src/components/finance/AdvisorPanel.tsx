@@ -9,11 +9,12 @@ import {
   Bot, 
   ArrowRight, 
   Key, 
-  RefreshCw, 
-  Check, 
-  User, 
   Trash2,
-  Cpu
+  Cpu,
+  User,
+  Check,
+  ChevronDown,
+  Brain
 } from 'lucide-react';
 
 interface AdvisorPanelProps {
@@ -27,7 +28,7 @@ export const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ transactions }) => {
     {
       id: 'm-init',
       role: 'assistant',
-      content: `Hello Mikiyas! I'm your Groq-powered AI Financial Advisor for Imako Solution. Ask me anything about your ETB cashflow, mistakes, client project pricing, or transport budgeting in Ethiopia!`,
+      content: `Hello Mikiyas! I'm your Groq-powered AI Financial Advisor for Imako Solution. Ask me anything about your ETB cashflow, mistakes holding back your income, client project pricing, or transport budgeting in Ethiopia!`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }
   ]);
@@ -41,7 +42,6 @@ export const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ transactions }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isAsking]);
 
-  // Mode (a): Daily Tip Card
   const dailyTip = getDailyFinancialTip(transactions);
 
   const handleAsk = async (e?: React.FormEvent, customQuery?: string) => {
@@ -61,19 +61,20 @@ export const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ transactions }) => {
     setIsAsking(true);
 
     try {
-      const aiReply = await queryGroqAdvisor(q, messages, transactions);
+      const response = await queryGroqAdvisor(q, messages, transactions);
       const assistantMsg: ChatMessage = {
         id: `a-${Date.now()}`,
         role: 'assistant',
-        content: aiReply,
+        content: response.content,
+        reasoning: response.reasoning,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages(prev => [...prev, assistantMsg]);
-    } catch (err) {
+    } catch (err: any) {
       const errorMsg: ChatMessage = {
         id: `err-${Date.now()}`,
         role: 'assistant',
-        content: `I ran into a connection issue with Groq. Please verify your internet connection or check your API key.`,
+        content: `Error contacting Groq API: ${err?.message || 'Check your internet connection or key.'}`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages(prev => [...prev, errorMsg]);
@@ -93,10 +94,10 @@ export const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ transactions }) => {
   };
 
   const sampleQuestions = [
-    'What is my mistake to gain this amount of money?',
-    'How can I cut transport expenses in Addis?',
-    'How should I price an Imako client project in ETB?',
-    'Review my current cashflow balance',
+    'Hi there, what is my mistake to gain this amount of money?',
+    'How should I price an Imako client web app in ETB?',
+    'How can I cut transport expenses in Addis Ababa?',
+    'What is the best way to handle 50% upfront deposits?',
   ];
 
   return (
@@ -146,25 +147,25 @@ export const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ transactions }) => {
         </div>
       </div>
 
-      {/* MODE (b): Groq AI Financial Advisor with Real Brain */}
+      {/* MODE (b): Groq AI Financial Advisor with Real Thinking Brain */}
       <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
         {/* Header with Brain badge and API settings */}
         <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100 dark:border-slate-800 gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="p-2 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 text-white shadow-md shadow-sky-500/20 shrink-0">
-              <Cpu className="w-4 h-4 animate-pulse" />
+              <Brain className="w-4 h-4 animate-pulse" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                  Groq AI Financial Brain
+                  Groq AI Advisor & Thinking Brain
                 </h3>
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md">
                   Active
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                Powered by Groq • Analyzes your live ETB finances
+                openai/gpt-oss-120b on Groq • Real-time ETB Reasoning
               </p>
             </div>
           </div>
@@ -189,7 +190,7 @@ export const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ transactions }) => {
               type="button"
               onClick={() => setShowKeyModal(true)}
               className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
-              title="Manage Groq API Key"
+              title="Inspect or Update Groq Key"
             >
               <Key className="w-3 h-3 text-amber-500" />
               <span className="hidden sm:inline">Groq Key</span>
@@ -199,7 +200,7 @@ export const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ transactions }) => {
 
         {/* Suggestion Chips */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-2 text-xs">
-          <span className="text-[11px] text-slate-400 font-semibold mr-1 shrink-0">Ideas:</span>
+          <span className="text-[11px] text-slate-400 font-semibold mr-1 shrink-0">Try asking:</span>
           {sampleQuestions.map((qText, i) => (
             <button
               key={i}
@@ -213,7 +214,7 @@ export const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ transactions }) => {
         </div>
 
         {/* Chat Message Scroll Window */}
-        <div className="h-64 sm:h-72 overflow-y-auto space-y-3 p-3 rounded-2xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200/80 dark:border-slate-800/80 my-2">
+        <div className="h-72 sm:h-80 overflow-y-auto space-y-3 p-3 sm:p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200/80 dark:border-slate-800/80 my-2">
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -222,25 +223,42 @@ export const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ transactions }) => {
               }`}
             >
               <div
-                className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold ${
+                className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold shadow-sm ${
                   msg.role === 'user'
                     ? 'bg-sky-600 text-white'
                     : 'bg-indigo-600 text-white'
                 }`}
               >
-                {msg.role === 'user' ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
+                {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
               </div>
 
               <div
-                className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap ${
+                className={`max-w-[88%] p-3.5 rounded-2xl text-xs leading-relaxed ${
                   msg.role === 'user'
                     ? 'bg-sky-600 text-white rounded-tr-none'
                     : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 shadow-sm rounded-tl-none font-sans'
                 }`}
               >
-                {msg.content}
+                {/* Thinking Process Accordion / Brain Trace */}
+                {msg.reasoning && (
+                  <details className="mb-2.5 p-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 text-[11px] group">
+                    <summary className="cursor-pointer font-bold flex items-center gap-1.5 text-sky-600 dark:text-sky-400 select-none hover:opacity-80">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                      <span>🧠 Internal Thinking Process</span>
+                      <span className="text-[10px] text-slate-400 font-mono ml-auto">Click to expand</span>
+                    </summary>
+                    <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 whitespace-pre-wrap font-mono text-[10px] text-slate-600 dark:text-slate-300 leading-relaxed max-h-48 overflow-y-auto">
+                      {msg.reasoning}
+                    </div>
+                  </details>
+                )}
+
+                <div className="whitespace-pre-wrap font-sans selection:bg-sky-200 selection:text-sky-900">
+                  {msg.content}
+                </div>
+
                 <div
-                  className={`text-[9px] mt-1 font-mono ${
+                  className={`text-[9px] mt-1.5 font-mono ${
                     msg.role === 'user' ? 'text-sky-200 text-right' : 'text-slate-400'
                   }`}
                 >
@@ -252,14 +270,14 @@ export const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ transactions }) => {
 
           {isAsking && (
             <div className="flex items-start gap-2.5">
-              <div className="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
-                <Bot className="w-3.5 h-3.5 animate-spin" />
+              <div className="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                <Bot className="w-4 h-4 animate-spin" />
               </div>
-              <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-sky-500 animate-bounce" />
-                <span className="w-2 h-2 rounded-full bg-sky-500 animate-bounce [animation-delay:0.2s]" />
-                <span className="w-2 h-2 rounded-full bg-sky-500 animate-bounce [animation-delay:0.4s]" />
-                <span className="font-medium text-[11px] ml-1">Groq is thinking with your ETB data...</span>
+              <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-sky-500 animate-ping" />
+                <span className="font-semibold text-xs text-slate-700 dark:text-slate-300">
+                  Groq Brain is analyzing financial strategy & reasoning in ETB...
+                </span>
               </div>
             </div>
           )}
@@ -272,8 +290,8 @@ export const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ transactions }) => {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Ask anything about your money, mistakes, rates in ETB..."
-            className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white placeholder-slate-400 text-xs focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
+            placeholder="Type any question (e.g. 'what is my mistake to gain this amount of money?')..."
+            className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white placeholder-slate-400 text-xs focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
             disabled={isAsking}
           />
           <button
@@ -293,10 +311,10 @@ export const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ transactions }) => {
           <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 relative">
             <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
               <Key className="w-4 h-4 text-amber-500" />
-              <span>Groq API Configuration</span>
+              <span>Groq API Key Active</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-              Your key is saved locally in this browser.
+              Your key is securely saved locally and connects directly to Groq.
             </p>
 
             <form onSubmit={handleSaveApiKey} className="space-y-4">
