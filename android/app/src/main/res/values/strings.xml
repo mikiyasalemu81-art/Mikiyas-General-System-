@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">System for Mikiyas</string>
+    <string name="title_activity_main">System for Mikiyas</string>
+    <string name="package_name">com.imako.mikiyas.system</string>
+    <string name="custom_url_scheme">com.imako.mikiyas.system</string>
+    <string name="accessibility_service_description">Monitors foreground app launches to enforce Mikiyas\'s chosen daily limits and distraction barriers for TikTok, Instagram, YouTube, and Chess.com.</string>
+</resources>

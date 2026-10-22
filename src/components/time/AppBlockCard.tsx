@@ -89,6 +89,11 @@ export const AppBlockCard: React.FC<AppBlockCardProps> = ({ app }) => {
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                 {app.name}
               </h3>
+              {app.packageName && (
+                <span className="font-mono text-[10px] text-slate-400 dark:text-slate-500 hidden sm:inline">
+                  {app.packageName}
+                </span>
+              )}
               {isPermanentBlocked && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-600 text-white shadow-sm">
                   <Lock className="w-2.5 h-2.5" />

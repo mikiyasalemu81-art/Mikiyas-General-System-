@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Focus Barrier - App Blocked</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #090d16;
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .card {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 520px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    }
+    .shield-badge {
+      width: 72px;
+      height: 72px;
+      background: rgba(239, 68, 68, 0.15);
+      border: 2px solid #ef4444;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin: 0 auto 20px auto;
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+    .app-title {
+      color: #ef4444;
+      font-weight: 800;
+    }
+    .subtitle {
+      color: #94a3b8;
+      font-size: 15px;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+    .stat-box {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 24px;
+      border: 1px solid #334155;
+    }
+    .stat-item {
+      text-align: center;
+    }
+    .stat-val {
+      font-size: 22px;
+      font-weight: 800;
+      color: #38bdf8;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+    }
+    .adhd-tip {
+      background: rgba(14, 165, 233, 0.1);
+      border-left: 4px solid #0ea5e9;
+      border-radius: 8px;
+      padding: 14px 16px;
+      text-align: left;
+      font-size: 14px;
+      color: #bae6fd;
+      line-height: 1.45;
+      margin-bottom: 28px;
+    }
+    .adhd-tip strong {
+      color: #38bdf8;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .btn-primary {
+      display: inline-block;
+      width: 100%;
+      background: #0ea5e9;
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 14px 24px;
+      border-radius: 12px;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: background 0.2s ease;
+    }
+    .btn-primary:hover {
+      background: #0284c7;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="shield-badge">🛑</div>
+    <h1>Focus Barrier Active</h1>
+    <p class="subtitle">
+      <span class="app-title" id="app-name">This App</span> is currently blocked by your productivity schedule in <strong>System for Mikiyas</strong>.
+    </p>
+
+    <div class="stat-box">
+      <div class="stat-item">
+        <div class="stat-val" id="attempt-count">1</div>
+        <div class="stat-label">Attempt Stopped</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val" id="block-reason">Limit Reached</div>
+        <div class="stat-label">Block Mode</div>
+      </div>
+    </div>
+
+    <div class="adhd-tip">
+      <strong>🧠 ADHD Focus Reset:</strong>
+      Take a 30-second breath. The dopamine hit from scrolling fades fast, but completing your task stays with you. Open your dashboard to see your #1 priority.
+    </div>
+
+    <button id="open-app-btn" class="btn-primary">Return to System for Mikiyas</button>
+  </div>
+
+  <script src="blocked.js"></script>
+</body>
+</html>

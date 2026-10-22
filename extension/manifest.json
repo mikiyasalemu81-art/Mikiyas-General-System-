@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "System for Mikiyas - Distraction Blocker",
+  "version": "1.0.0",
+  "description": "Desktop companion for System for Mikiyas. Enforces daily limits and permanent blocks for TikTok, Instagram, Chess.com, YouTube Shorts, and Facebook.",
+  "permissions": [
+    "declarativeNetRequest",
+    "declarativeNetRequestFeedback",
+    "storage",
+    "alarms",
+    "tabs"
+  ],
+  "host_permissions": [
+    "*://*.tiktok.com/*",
+    "*://*.instagram.com/*",
+    "*://*.chess.com/*",
+    "*://*.youtube.com/*",
+    "*://*.facebook.com/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "System for Mikiyas Blocker"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["blocked.html"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "externally_connectable": {
+    "matches": [
+      "http://localhost/*",
+      "http://127.0.0.1/*",
+      "https://*.vercel.app/*",
+      "https://*.netlify.app/*",
+      "https://*.github.io/*"
+    ]
+  }
+}

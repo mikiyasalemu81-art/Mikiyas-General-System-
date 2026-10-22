@@ -13,12 +13,6 @@ const KEYS = {
   LAST_WEEKLY_RESET: 'system_mikiyas_last_weekly_reset',
 };
 
-// Assembled dynamically to prevent GitHub Push Protection from blocking repository sync
-const GROQ_B64_PARTS = ['Z3NrX0VqakE1Tzhhb0dsdWhwclgzNzd1', 'V0dkeWIzRllHdzBBZ3d0cFJWMnQ2V3NFS25KQVRWcjE='];
-const DECODED_FALLBACK = typeof atob !== 'undefined' ? atob(GROQ_B64_PARTS.join('')) : '';
-
-export const DEFAULT_GROQ_API_KEY = (import.meta as any).env?.VITE_GROQ_API_KEY || DECODED_FALLBACK;
-
 export interface IStorageService {
   getProfile(): UserProfile;
   saveProfile(profile: UserProfile): void;
@@ -62,10 +56,6 @@ class LocalStorageService implements IStorageService {
     }
     if (!localStorage.getItem(KEYS.PROJECTS)) {
       this.saveProjects(SEED_PROJECTS);
-    }
-    const existingKey = localStorage.getItem(KEYS.GROQ_API_KEY);
-    if (!existingKey || existingKey.trim().length === 0) {
-      this.saveGroqApiKey(DEFAULT_GROQ_API_KEY);
     }
   }
 
@@ -163,12 +153,15 @@ class LocalStorageService implements IStorageService {
   }
 
   getGroqApiKey(): string {
-    const key = localStorage.getItem(KEYS.GROQ_API_KEY);
-    return key && key.trim().length > 0 ? key : DEFAULT_GROQ_API_KEY;
+    return localStorage.getItem(KEYS.GROQ_API_KEY) || '';
   }
 
   saveGroqApiKey(key: string): void {
-    localStorage.setItem(KEYS.GROQ_API_KEY, key.trim() || DEFAULT_GROQ_API_KEY);
+    if (key.trim()) {
+      localStorage.setItem(KEYS.GROQ_API_KEY, key.trim());
+    } else {
+      localStorage.removeItem(KEYS.GROQ_API_KEY);
+    }
   }
 
   checkAndPerformScheduledResets(tasks: Task[], apps: BlockedApp[]): { tasks: Task[]; apps: BlockedApp[]; resetOccurred: boolean } {

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BlockedApp, Task, Transaction, ProjectIntake, UserProfile, BlockMode } from '../types';
 import { storageService } from '../services/storage';
 import { notificationService } from '../services/notifications';
+import { NativeBlockerService } from '../services/nativeBlocker';
 
 export type TabType = 'time' | 'tasks' | 'finance';
 
@@ -26,6 +27,7 @@ interface AppContextType {
   setAppBlockMode: (appId: string, mode: BlockMode) => void;
   recordAppUsage: (appId: string, additionalMinutes: number) => void;
   recordAppLaunchAttempt: (appId: string) => boolean;
+  addCustomApp: (name: string, packageName: string, limitMinutes?: number) => void;
 
   activeLockedApp: BlockedApp | null;
   setActiveLockedApp: (app: BlockedApp | null) => void;
@@ -113,6 +115,69 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const reminderInterval = setInterval(checkReminders, 15000);
     return () => clearInterval(reminderInterval);
   }, [tasks]);
+
+  // Sync blocked apps to Android native plugin & desktop Chrome extension storage
+  useEffect(() => {
+    NativeBlockerService.syncAppsToNative(apps).catch(() => {});
+  }, [apps]);
+
+  // Realtime Android blocking listener & initial usage sync
+  useEffect(() => {
+    if (NativeBlockerService.isNativeAvailable()) {
+      let listenerHandle: any = null;
+
+      NativeBlockerService.registerBlockListener((data) => {
+        const matchingApp = apps.find(a => a.packageName === data.packageName);
+        const appName = matchingApp ? matchingApp.name : data.packageName;
+
+        notificationService.playChime('blocked');
+        addBanner({
+          type: 'blocked',
+          title: `${appName} Blocked`,
+          message: `${appName} was closed by System for Mikiyas. Urge stopped! Attempt #${data.attempts}`,
+        });
+
+        setAppsState(prev => prev.map(a => {
+          if (a.packageName === data.packageName) {
+            return {
+              ...a,
+              blockedAttempts: data.attempts,
+              lastAttemptAt: new Date(data.timestamp).toISOString(),
+            };
+          }
+          return a;
+        }));
+      }).then(handle => {
+        listenerHandle = handle;
+      });
+
+      // Fetch real foreground usage stats from Android UsageStatsManager
+      Promise.all([
+        NativeBlockerService.getRealUsage(),
+        NativeBlockerService.getBlockedAttempts(),
+      ]).then(([usageMap, attemptsMap]) => {
+        if (Object.keys(usageMap).length > 0 || Object.keys(attemptsMap).length > 0) {
+          setAppsState(prev => prev.map(a => {
+            const pkg = a.packageName;
+            if (!pkg) return a;
+            const realUsage = usageMap[pkg] !== undefined ? usageMap[pkg] : a.currentUsageMinutes;
+            const realAttempts = attemptsMap[pkg] !== undefined ? attemptsMap[pkg] : a.blockedAttempts;
+            return {
+              ...a,
+              currentUsageMinutes: realUsage,
+              blockedAttempts: realAttempts,
+            };
+          }));
+        }
+      }).catch(console.warn);
+
+      return () => {
+        if (listenerHandle && listenerHandle.remove) {
+          listenerHandle.remove();
+        }
+      };
+    }
+  }, []);
 
   const addBanner = (banner: Omit<BannerMessage, 'id' | 'timestamp'>) => {
     const id = `b-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
@@ -221,6 +286,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return false;
   };
 
+  const addCustomApp = (name: string, packageName: string, limitMinutes: number = 30) => {
+    const cleanPkg = packageName.trim();
+    if (!cleanPkg) return;
+
+    const existing = apps.find(a => a.packageName === cleanPkg || a.id === cleanPkg);
+    if (existing) {
+      addBanner({
+        type: 'info',
+        title: 'App Already Monitored',
+        message: `${name || cleanPkg} is already registered in your distraction shield.`,
+      });
+      return;
+    }
+
+    const newApp: BlockedApp = {
+      id: `custom_${cleanPkg.replace(/[^a-zA-Z0-9]/g, '_')}`,
+      name: name.trim() || cleanPkg,
+      category: 'other',
+      icon: 'Smartphone',
+      url: '',
+      domains: [],
+      packageName: cleanPkg,
+      isBlocked: true,
+      blockMode: 'limit',
+      dailyLimitMinutes: Math.max(5, limitMinutes),
+      currentUsageMinutes: 0,
+      blockedAttempts: 0,
+    };
+
+    const updated = [...apps, newApp];
+    setAppsState(updated);
+    storageService.saveApps(updated);
+
+    addBanner({
+      type: 'info',
+      title: 'App Added to Shield',
+      message: `${newApp.name} is now tracked with a ${newApp.dailyLimitMinutes}-min limit.`,
+    });
+  };
+
   // Tasks Management
   const addTask = (title: string, type: 'daily' | 'weekly', reminderTime: string, dueDate?: string) => {
     const newTask: Task = {
@@ -321,6 +426,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAppBlockMode,
         recordAppUsage,
         recordAppLaunchAttempt,
+        addCustomApp,
         activeLockedApp,
         setActiveLockedApp,
         tasks,

@@ -1,5 +1,4 @@
 import { Transaction, ChatMessage } from '../types';
-import { storageService, DEFAULT_GROQ_API_KEY } from './storage';
 
 export interface FinancialStats {
   totalIncome: number;
@@ -105,107 +104,72 @@ export function getDailyFinancialTip(transactions: Transaction[]): { title: stri
 }
 
 /**
- * Groq AI Financial Advisor with Real Thinking Brain
- * Uses Groq's high-intelligence reasoning model (openai/gpt-oss-120b)
- * Returns both the internal analytical thinking process and the final actionable answer in ETB.
+ * Chad Personal Assistant & Financial Advisor API Client
+ * Calls the secure server-side route `/api/chat`.
+ * Never exposes the GROQ_API_KEY to the browser bundle.
+ * Sends the full conversation history. No keyword matching or hardcoded fake replies.
  */
-export async function queryGroqAdvisor(
+export async function queryChadAssistant(
   userMessage: string,
   history: ChatMessage[],
-  transactions: Transaction[],
-  apiKeyOverride?: string
+  contextData?: {
+    tasksCount?: number;
+    pendingTasks?: string[];
+    netBalance?: number;
+    blockedAppsCount?: number;
+    userName?: string;
+  }
 ): Promise<AdvisorResponse> {
-  const apiKey = (apiKeyOverride || storageService.getGroqApiKey() || DEFAULT_GROQ_API_KEY).trim();
-  const stats = computeFinancialStats(transactions);
-
-  // Compile recent transactions summary in ETB
-  const recentTxList = transactions.slice(0, 15).map(t => 
-    `- [${t.date}] ${t.type.toUpperCase()}: ETB ${t.amount.toLocaleString()} | Category: ${t.category} | Note: "${t.note}"`
-  ).join('\n') || 'Ledger is currently empty (0 ETB balance).';
-
-  const systemPrompt = `You are the dedicated Senior Financial Advisor & Business Strategist for Mikiyas.
-Mikiyas is a talented freelance developer and founder of Imako Solution living and working in Ethiopia.
-Mikiyas has ADHD, so he expects deep, intelligent, analytical reasoning, high visual structure (markdown tables, bullet points, bold numbers), and no fluff.
-ALL currency MUST ALWAYS be in Ethiopian Birr (ETB). Never use $ or USD unless explicitly asked to do a conversion.
-
-MIKIYAS'S LIVE FINANCIAL DASHBOARD (IN ETB):
-- Total Income: ETB ${stats.totalIncome.toLocaleString()}
-- Total Expenses: ETB ${stats.totalExpenses.toLocaleString()}
-- Net Balance: ETB ${stats.netBalance.toLocaleString()}
-- Transport Spending: ETB ${stats.transportExpenses.toLocaleString()} (${stats.transportPercentage}% of outflow)
-- Client Spending: ETB ${stats.clientExpenses.toLocaleString()}
-- Total Recorded Entries: ${stats.recentTransactionsCount}
-RECORDED LEDGER:
-${recentTxList}
-
-DIRECTIVES:
-1. THINK THROUGH THE USER'S QUESTION DEEPLY. If he asks "what is my mistake to gain this amount of money?", analyze what might be holding back his earnings in Ethiopia (e.g. under-pricing client projects, not asking for 30-50% upfront deposits on Imako deliverables, transport cost leaks in Addis Ababa, or lack of monthly retainers).
-2. Give a rich, thorough, multi-section response formatted in clean markdown:
-   - **Direct Assessment**: What the numbers tell us right now.
-   - **Mistakes / Inefficiencies Identified**: Where money or focus is being lost.
-   - **Actionable ETB Strategy**: Concrete calculations and pricing models (e.g., charging 30,000–80,000+ ETB per web app, milestone breakdown).
-   - **Takeaway Rule**: Format a bold callout: "💡 Pro Tip: If you cut X, you save Y ETB..." or "💡 Growth Rule: If you charge X ETB upfront, you gain..."`;
-
-  const messages = [
-    { role: 'system', content: systemPrompt },
-    ...history.slice(-6).map(h => ({
-      role: h.role,
-      content: h.content,
-    })),
-    { role: 'user', content: userMessage }
-  ];
-
-  const candidateModels = [
-    'openai/gpt-oss-120b',
-    'openai/gpt-oss-20b',
-    'qwen/qwen3.8-27b'
-  ];
-
-  let lastError: any = null;
-
-  for (const model of candidateModels) {
-    try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          temperature: 0.7,
-          max_tokens: 1200,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorJson = await response.json().catch(() => ({}));
-        lastError = errorJson;
-        console.warn(`Groq model ${model} error:`, errorJson);
-        continue;
-      }
-
-      const data = await response.json();
-      const choice = data.choices?.[0];
-      const content = choice?.message?.content;
-      const reasoning = choice?.message?.reasoning;
-
-      if (content && content.trim().length > 0) {
-        return {
-          content: content.trim(),
-          reasoning: reasoning && reasoning.trim().length > 0 ? reasoning.trim() : undefined,
-        };
-      }
-    } catch (err) {
-      lastError = err;
-      console.warn(`Fetch error for ${model}:`, err);
-    }
+  const cleanMessage = userMessage.trim();
+  if (!cleanMessage) {
+    throw new Error('Message cannot be empty.');
   }
 
-  // If all models failed or network error occurred, explain the real issue clearly
+  // Construct full message history array of { role, content }
+  const formattedHistory = history.map(m => ({
+    role: m.role,
+    content: m.content
+  }));
+
+  const payload = {
+    messages: [...formattedHistory, { role: 'user', content: cleanMessage }],
+    contextData
+  };
+
+  let response: Response;
+  try {
+    response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+  } catch (netErr: any) {
+    throw new Error(`Network failure: Unable to reach /api/chat. (${netErr?.message || 'Check your connection'})`);
+  }
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('401 Unauthorized: Invalid or missing GROQ_API_KEY on server. Please check your .env configuration.');
+    }
+    if (response.status === 429) {
+      throw new Error('429 Rate Limit: Groq request limit reached. Please wait a few seconds and try again.');
+    }
+    if (response.status === 404) {
+      throw new Error('404 Model Not Found: The configured Groq model is currently unavailable.');
+    }
+    throw new Error(data.error || `Server error (${response.status}): ${response.statusText}`);
+  }
+
+  if (!data.reply || typeof data.reply !== 'string') {
+    throw new Error('Unexpected response format received from assistant API.');
+  }
+
   return {
-    content: `I could not connect to the Groq AI service. Please check your internet connection or verify your Groq API key in the settings above.\n\nError details: ${JSON.stringify(lastError || 'Network request failed')}`,
-    reasoning: `Attempted models: ${candidateModels.join(', ')}. Encountered error: ${String(lastError)}`,
+    content: data.reply.trim(),
+    reasoning: data.reasoning ? data.reasoning.trim() : undefined
   };
 }

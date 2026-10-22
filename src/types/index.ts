@@ -15,6 +15,7 @@ export interface BlockedApp {
   icon: string;
   url: string; // external site url
   domains: string[]; // domains to block in hosts/DNS
+  packageName?: string; // Android package name (e.g. com.zhiliaoapp.musically)
   isBlocked: boolean; // whether blocking is active
   blockMode: BlockMode; // 'always' = 24/7 permanent lock; 'limit' = blocked after daily limit
   dailyLimitMinutes: number; // in minutes (for limit mode)
