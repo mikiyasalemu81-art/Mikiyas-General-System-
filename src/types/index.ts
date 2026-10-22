@@ -30,8 +30,11 @@ export interface Task {
   id: string;
   title: string;
   type: TaskType;
-  reminderTime: string; // HH:mm format (e.g. "09:00")
-  dueDate?: string; // YYYY-MM-DD
+  dueDate: string; // YYYY-MM-DD
+  dueTime: string; // HH:mm format deadline (e.g. "17:00")
+  reminderTime: string; // HH:mm format (automatically calculated 3 hours before deadline)
+  autoReminderAt?: string; // ISO string for the 3-hour reminder trigger
+  notified?: boolean; // whether 3-hour reminder has been sent
   completed: boolean;
   completedAt?: string;
   createdAt: string;
@@ -44,7 +47,8 @@ export interface Transaction {
   id: string;
   amount: number;
   date: string; // YYYY-MM-DD
-  note: string;
+  reason: string; // REQUIRED free-text reason (e.g. "bought a phone charger", "paid client invoice")
+  note?: string; // Optional extra details
   category: FinanceCategory; // strictly Transport or Clients
   type: TransactionType;
 }

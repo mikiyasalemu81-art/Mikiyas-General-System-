@@ -221,6 +221,37 @@ export const AppBlockCard: React.FC<AppBlockCardProps> = ({ app }) => {
                 value={app.dailyLimitMinutes}
                 onChange={(newLimit) => updateAppLimit(app.id, newLimit)}
               />
+
+              {/* Manual Usage Logging Controls for Web Version */}
+              <div className="flex items-center justify-between text-[11px] pt-1">
+                <span className="text-slate-500 dark:text-slate-400 font-medium">Log manual usage:</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => recordAppUsage(app.id, 15)}
+                    className="px-2 py-0.5 rounded-md font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+                    title="Log 15 minutes of usage"
+                  >
+                    +15m
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => recordAppUsage(app.id, 30)}
+                    className="px-2 py-0.5 rounded-md font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+                    title="Log 30 minutes of usage"
+                  >
+                    +30m
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => recordAppUsage(app.id, 60)}
+                    className="px-2 py-0.5 rounded-md font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+                    title="Log 1 hour of usage"
+                  >
+                    +1h
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

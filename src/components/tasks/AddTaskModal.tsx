@@ -1,38 +1,55 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { X, Plus, Clock, Calendar, CheckSquare, Repeat } from 'lucide-react';
+import { X, Plus, Clock, Calendar, CheckSquare, Repeat, BellRing, Sparkles } from 'lucide-react';
 
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+function getThreeHoursBeforeTime(timeStr: string): string {
+  if (!timeStr) return '';
+  const [h, m] = timeStr.split(':').map(Number);
+  const totalMins = (h || 0) * 60 + (m || 0) - 180;
+  const normalized = (totalMins + 24 * 60) % (24 * 60);
+  const rh = Math.floor(normalized / 60);
+  const rm = normalized % 60;
+  return `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`;
+}
+
 export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose }) => {
-  const { addTask, addBanner } = useApp();
+  const { addTask } = useApp();
   const [title, setTitle] = useState('');
   const [type, setType] = useState<'daily' | 'weekly'>('daily');
-  const [reminderTime, setReminderTime] = useState('09:00');
   const [dueDate, setDueDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [dueTime, setDueTime] = useState(() => {
+    // Default to 4 hours from now rounded to next hour
+    const d = new Date(Date.now() + 4 * 60 * 60 * 1000);
+    return `${String(d.getHours()).padStart(2, '0')}:00`;
+  });
 
   if (!isOpen) return null;
+
+  // Calculate reminder time & urgency preview
+  const autoReminderTime = getThreeHoursBeforeTime(dueTime);
+  const deadlineDateObj = new Date(`${dueDate}T${dueTime}:00`);
+  const deadlineMs = deadlineDateObj.getTime();
+  const nowMs = Date.now();
+  const minutesRemaining = Math.round((deadlineMs - nowMs) / 60000);
+  const isDueInLessThanThreeHours = minutesRemaining <= 180;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    addTask(title.trim(), type, reminderTime, dueDate);
-    addBanner({
-      type: 'info',
-      title: 'Task Added',
-      message: `"${title.trim()}" set for ${reminderTime}`,
-    });
+    addTask(title.trim(), type, dueDate, dueTime);
 
     setTitle('');
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div 
         className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 relative animate-slide-up"
         role="dialog"
@@ -55,7 +72,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose }) =
               Create New Task
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Set title, cycle, and notification alert time
+              Set deadline — automatic reminder notifies you 3 hours before
             </p>
           </div>
         </div>
@@ -111,24 +128,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose }) =
             </div>
           </div>
 
-          {/* Reminder Time and Due Date */}
+          {/* Deadline Date and Deadline Time */}
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
-                Reminder Time
-              </label>
-              <div className="relative">
-                <Clock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="time"
-                  value={reminderTime}
-                  onChange={(e) => setReminderTime(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 text-slate-900 dark:text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  required
-                />
-              </div>
-            </div>
-
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
                 Target Date
@@ -140,12 +141,54 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose }) =
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 text-slate-900 dark:text-white text-xs font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
+                Deadline Time
+              </label>
+              <div className="relative">
+                <Clock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="time"
+                  value={dueTime}
+                  onChange={(e) => setDueTime(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 text-slate-900 dark:text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  required
                 />
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3">
+          {/* Automatic Reminder Info Card (No manual setting needed) */}
+          <div className={`p-3 rounded-2xl border text-xs leading-relaxed transition-all ${
+            isDueInLessThanThreeHours
+              ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-200'
+              : 'bg-sky-50 dark:bg-sky-950/30 border-sky-200 dark:border-sky-900/60 text-sky-900 dark:text-sky-200'
+          }`}>
+            <div className="flex items-center gap-1.5 font-bold mb-1">
+              <BellRing className="w-3.5 h-3.5 shrink-0" />
+              <span>
+                {isDueInLessThanThreeHours 
+                  ? '⚡ Urgent: Due in < 3 Hours' 
+                  : '⏰ Automatic 3-Hour Reminder'}
+              </span>
+            </div>
+            {isDueInLessThanThreeHours ? (
+              <p className="text-[11px]">
+                This deadline is in <strong>{minutesRemaining <= 0 ? '0 minutes' : `${minutesRemaining} minutes`}</strong>. A browser alert will notify you <strong>immediately upon creation</strong>!
+              </p>
+            ) : (
+              <p className="text-[11px]">
+                You will receive a browser notification automatically at <strong>{autoReminderTime}</strong> (exactly 3 hours before the {dueTime} deadline).
+              </p>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={onClose}

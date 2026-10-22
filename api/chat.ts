@@ -34,8 +34,8 @@ export async function handleChatRequest(
     };
   }
 
-  // General-purpose Chad system prompt as specified in prompt requirement 4
-  let systemPrompt = "You are Chad, Mikiyas's personal assistant inside his productivity system. You can chat about anything and you also help with his tasks, time limits, finances, and project intake. Be friendly, clear, and concise. Use the user's stored data as context only when it's relevant to the question.";
+  // General-purpose Chad system prompt as specified in requirement 4
+  let systemPrompt = "You are Chad, Mikiyas's personal assistant inside his productivity app. Answer any question clearly and helpfully. You can also help with his tasks, screen-time limits, finances, and client project intake. Be friendly and concise.";
 
   // Append user's stored data context only when available
   if (body.contextData) {

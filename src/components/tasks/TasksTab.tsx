@@ -126,10 +126,10 @@ export const TasksTab: React.FC = () => {
             <BellRing className="w-5 h-5 text-sky-600 dark:text-sky-400 mt-0.5 shrink-0" />
             <div>
               <h4 className="font-bold text-slate-900 dark:text-white">
-                Enable Task Reminders & Alarms
+                Enable Automatic Task Reminders
               </h4>
               <p className="text-slate-600 dark:text-slate-400 mt-0.5">
-                Receive browser alerts when tasks are due at their specified reminder times.
+                Receive browser alerts 3 hours before every task deadline (and immediate alerts for tasks due in &lt; 3 hours). Works even when the app is closed.
               </p>
             </div>
           </div>

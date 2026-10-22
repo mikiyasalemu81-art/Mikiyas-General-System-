@@ -1,4 +1,5 @@
 // Browser Notification API and ADHD focus audio chime service
+import { Task } from '../types';
 
 class NotificationService {
   private audioCtx: AudioContext | null = null;
@@ -88,43 +89,108 @@ class NotificationService {
     }
   }
 
-  // Send a task reminder notification
-  sendTaskReminder(taskTitle: string, taskType: string) {
-    this.playChime('alert');
+  // Display browser notification through Service Worker registration when possible
+  async showBrowserNotification(title: string, options: NotificationOptions) {
+    if (!this.isSupported() || Notification.permission !== 'granted') return;
 
-    if (this.isSupported() && Notification.permission === 'granted') {
+    // Prefer service worker registration so it functions even when tab is backgrounded/closed
+    if ('serviceWorker' in navigator) {
       try {
-        const notif = new Notification(`⏰ Task Reminder: System for Mikiyas`, {
-          body: `Time for your ${taskType} task: "${taskTitle}"`,
-          icon: '/favicon.svg',
-          badge: '/favicon.svg',
-          tag: `task-${Date.now()}`,
-        });
-        notif.onclick = () => {
-          window.focus();
-          notif.close();
-        };
-      } catch (e) {
-        console.warn('Notification constructor error:', e);
+        const registration = await navigator.serviceWorker.ready;
+        if (registration && registration.showNotification) {
+          await registration.showNotification(title, {
+            icon: '/favicon.svg',
+            badge: '/favicon.svg',
+            ...options
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn('ServiceWorker showNotification failed, using fallback:', err);
       }
+    }
+
+    try {
+      const notif = new Notification(title, {
+        icon: '/favicon.svg',
+        badge: '/favicon.svg',
+        ...options
+      });
+      notif.onclick = () => {
+        window.focus();
+        notif.close();
+      };
+    } catch (e) {
+      console.warn('Notification constructor error:', e);
+    }
+  }
+
+  // Send a general task reminder notification
+  sendTaskReminder(taskTitle: string, taskType: string = 'task') {
+    this.playChime('alert');
+    this.showBrowserNotification(`⏰ Task Reminder: System for Mikiyas`, {
+      body: `Time for your ${taskType}: "${taskTitle}"`,
+      tag: `task-${Date.now()}`,
+    });
+  }
+
+  // Send an automatic 3-hour task reminder notification
+  sendThreeHourReminder(taskTitle: string, dueTime: string) {
+    this.playChime('alert');
+    this.showBrowserNotification(`⏰ Task Due in 3 Hours: System for Mikiyas`, {
+      body: `Your task "${taskTitle}" is due at ${dueTime}! Focus on finishing it now.`,
+      tag: `reminder-${Date.now()}`,
+    });
+  }
+
+  // Send immediate reminder if task is due in less than 3 hours
+  sendImmediateReminder(taskTitle: string, minutesRemaining: number, dueTime: string) {
+    this.playChime('alert');
+    const timeText = minutesRemaining <= 0 ? 'Due right now!' : `Due in ${minutesRemaining} minutes (at ${dueTime})!`;
+    this.showBrowserNotification(`⚠️ Task Due Soon (< 3 Hours): ${taskTitle}`, {
+      body: `This task was set with a short deadline: ${timeText}`,
+      tag: `urgent-${Date.now()}`,
+    });
+  }
+
+  // Sync scheduled tasks with Service Worker for background dispatch
+  syncTasksWithServiceWorker(tasks: Task[]) {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+    const payload = tasks
+      .filter(t => !t.completed)
+      .map(t => {
+        let autoReminderTimestamp = 0;
+        if (t.dueDate && t.dueTime) {
+          const deadline = new Date(`${t.dueDate}T${t.dueTime}:00`).getTime();
+          autoReminderTimestamp = deadline - 3 * 60 * 60 * 1000;
+        }
+        return {
+          id: t.id,
+          title: t.title,
+          type: t.type,
+          dueTime: t.dueTime,
+          dueDate: t.dueDate,
+          autoReminderTimestamp,
+          swNotified: false
+        };
+      });
+
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'SCHEDULE_TASK_REMINDERS',
+        tasks: payload
+      });
     }
   }
 
   // Send an app blocked notification (browser notification if granted)
   sendAppBlockedAlert(appName: string, limitMinutes: number) {
     this.playChime('blocked');
-
-    if (this.isSupported() && Notification.permission === 'granted') {
-      try {
-        new Notification(`🛑 App Blocked: ${appName}`, {
-          body: `You've reached your ${limitMinutes} min limit for ${appName} today. Step away and refresh!`,
-          icon: '/favicon.svg',
-          tag: `blocked-${appName}`,
-        });
-      } catch (e) {
-        console.warn('Blocked notification error:', e);
-      }
-    }
+    this.showBrowserNotification(`🛑 App Blocked: ${appName}`, {
+      body: `You've reached your ${limitMinutes} min limit for ${appName} today. Step away and refresh!`,
+      tag: `blocked-${appName}`,
+    });
   }
 }
 

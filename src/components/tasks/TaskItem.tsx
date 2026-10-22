@@ -1,7 +1,7 @@
 import React from 'react';
 import { Task } from '../../types';
 import { useApp } from '../../context/AppContext';
-import { Check, Clock, Calendar, Trash2, Repeat, CheckCircle2 } from 'lucide-react';
+import { Check, Clock, Calendar, Trash2, Repeat, BellRing } from 'lucide-react';
 
 interface TaskItemProps {
   task: Task;
@@ -64,11 +64,19 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
               {task.type}
             </span>
 
-            {/* Reminder Time */}
+            {/* Deadline Time */}
+            {(task.dueTime || task.reminderTime) && (
+              <span className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                <Clock className="w-3 h-3 text-sky-500" />
+                <span>Due: {task.dueTime || task.reminderTime}</span>
+              </span>
+            )}
+
+            {/* Auto 3-Hour Reminder Badge */}
             {task.reminderTime && (
-              <span className="inline-flex items-center gap-1 font-mono text-[11px] text-slate-500 dark:text-slate-400">
-                <Clock className="w-3 h-3 text-slate-400" />
-                {task.reminderTime}
+              <span className="inline-flex items-center gap-1 font-mono text-[10px] text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/60 px-2 py-0.5 rounded-md border border-sky-200 dark:border-sky-900/40">
+                <BellRing className="w-2.5 h-2.5 text-sky-500" />
+                <span>Alert: {task.reminderTime} (-3h)</span>
               </span>
             )}
 

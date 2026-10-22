@@ -7,7 +7,8 @@ import {
   Clock, 
   ShieldAlert, 
   AlertTriangle, 
-  Lock 
+  Lock,
+  Info 
 } from 'lucide-react';
 
 export const TimeManagementTab: React.FC = () => {
@@ -36,6 +37,19 @@ export const TimeManagementTab: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-20 animate-fade-in">
+      {/* Platform Real Blocking Notice */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 border border-amber-200 dark:border-amber-900/60 flex items-start gap-3 text-xs leading-relaxed text-amber-900 dark:text-amber-200 shadow-sm">
+        <Info className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+        <div>
+          <h4 className="font-bold text-slate-900 dark:text-white mb-0.5">
+            Platform Notice: Real Phone App Blocking Requires the Android App
+          </h4>
+          <p>
+            The web app alone cannot block other apps on a phone. Real app blocking requires the native Android wrapper (Capacitor + Kotlin plugin using Usage Access & Accessibility Service), which redirects to home when limits are reached and counts blocked attempts. In this web version, you can log manual usage, test limits, and receive small in-app notification banners.
+          </p>
+        </div>
+      </div>
+
       {/* 1. TOP OVERVIEW METRICS */}
       <section>
         <div className="flex items-center justify-between mb-3">

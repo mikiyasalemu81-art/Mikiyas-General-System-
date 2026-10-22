@@ -33,7 +33,7 @@ interface AppContextType {
   setActiveLockedApp: (app: BlockedApp | null) => void;
 
   tasks: Task[];
-  addTask: (title: string, type: 'daily' | 'weekly', reminderTime: string, dueDate?: string) => void;
+  addTask: (title: string, type: 'daily' | 'weekly', dueDate?: string, dueTime?: string) => void;
   toggleTaskCompletion: (taskId: string) => void;
   deleteTask: (taskId: string) => void;
   resetDailyTasksManual: () => void;
@@ -87,31 +87,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => clearInterval(interval);
   }, [tasks, apps]);
 
-  // Check task reminders
+  // Check automatic 3-hour task reminders and sync with Service Worker
   useEffect(() => {
+    notificationService.syncTasksWithServiceWorker(tasks);
+
     const checkReminders = () => {
-      const now = new Date();
-      const currentHours = String(now.getHours()).padStart(2, '0');
-      const currentMinutes = String(now.getMinutes()).padStart(2, '0');
-      const currentTimeStr = `${currentHours}:${currentMinutes}`;
-      const todayStr = now.toISOString().split('T')[0];
+      const nowMs = Date.now();
 
       tasks.forEach(task => {
-        if (!task.completed && task.reminderTime === currentTimeStr) {
-          const key = `reminded_${task.id}_${todayStr}_${currentTimeStr}`;
-          if (!sessionStorage.getItem(key)) {
-            sessionStorage.setItem(key, 'true');
-            notificationService.sendTaskReminder(task.title, task.type);
-            addBanner({
-              type: 'reminder',
-              title: `Task Reminder (${task.reminderTime})`,
-              message: task.title,
-            });
+        if (!task.completed && task.dueDate && task.dueTime) {
+          const deadlineMs = new Date(`${task.dueDate}T${task.dueTime}:00`).getTime();
+          const autoReminderMs = deadlineMs - 3 * 60 * 60 * 1000;
+          const key = `reminded_3h_${task.id}`;
+
+          // Trigger reminder at 3 hours before deadline
+          if (nowMs >= autoReminderMs && nowMs < deadlineMs) {
+            if (!sessionStorage.getItem(key)) {
+              sessionStorage.setItem(key, 'true');
+              notificationService.sendThreeHourReminder(task.title, task.dueTime);
+              addBanner({
+                type: 'reminder',
+                title: `Task Due in 3 Hours (${task.dueTime})`,
+                message: task.title,
+              });
+            }
           }
         }
       });
     };
 
+    checkReminders();
     const reminderInterval = setInterval(checkReminders, 15000);
     return () => clearInterval(reminderInterval);
   }, [tasks]);
@@ -273,7 +278,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       storageService.saveApps(updatedList);
 
       notificationService.playChime('blocked');
-      setActiveLockedApp(updatedApp);
+      // Show small notification banner (not full-screen alert)
+      setActiveLockedApp(null);
 
       addBanner({
         type: 'blocked',
@@ -326,20 +332,59 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  // Tasks Management
-  const addTask = (title: string, type: 'daily' | 'weekly', reminderTime: string, dueDate?: string) => {
+  // Tasks Management with Automatic 3-Hour Reminders
+  const addTask = (title: string, type: 'daily' | 'weekly', dueDate?: string, dueTime?: string) => {
+    const targetDate = dueDate || new Date().toISOString().split('T')[0];
+    const targetTime = dueTime || '18:00';
+
+    // Calculate 3 hours before deadline
+    const [h, m] = targetTime.split(':').map(Number);
+    const totalMins = (h || 0) * 60 + (m || 0) - 180;
+    const normalized = (totalMins + 24 * 60) % (24 * 60);
+    const rh = Math.floor(normalized / 60);
+    const rm = normalized % 60;
+    const autoReminderTime = `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`;
+
+    const deadlineMs = new Date(`${targetDate}T${targetTime}:00`).getTime();
+    const autoReminderMs = deadlineMs - 3 * 60 * 60 * 1000;
+    const nowMs = Date.now();
+    const minutesRemaining = Math.round((deadlineMs - nowMs) / 60000);
+    const isDueInLessThanThreeHours = minutesRemaining <= 180;
+
     const newTask: Task = {
       id: `task-${Date.now()}`,
       title,
       type,
-      reminderTime,
-      dueDate: dueDate || new Date().toISOString().split('T')[0],
+      dueDate: targetDate,
+      dueTime: targetTime,
+      reminderTime: autoReminderTime,
+      autoReminderAt: new Date(autoReminderMs).toISOString(),
+      notified: isDueInLessThanThreeHours,
       completed: false,
       createdAt: new Date().toISOString(),
     };
+
     const updated = [newTask, ...tasks];
     setTasksState(updated);
     storageService.saveTasks(updated);
+
+    // Sync with Service Worker for background dispatch
+    notificationService.syncTasksWithServiceWorker(updated);
+
+    if (isDueInLessThanThreeHours) {
+      notificationService.sendImmediateReminder(title, minutesRemaining, targetTime);
+      addBanner({
+        type: 'reminder',
+        title: 'Task Due in < 3 Hours!',
+        message: `"${title}" is due at ${targetTime} (${minutesRemaining <= 0 ? 'Due right now' : `${minutesRemaining}m remaining`})!`,
+      });
+    } else {
+      addBanner({
+        type: 'info',
+        title: 'Task Added with Auto-Reminder',
+        message: `"${title}" deadline is ${targetTime}. You'll be alerted at ${autoReminderTime} (3 hours before).`,
+      });
+    }
   };
 
   const toggleTaskCompletion = (taskId: string) => {
@@ -357,24 +402,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     setTasksState(updated);
     storageService.saveTasks(updated);
+    notificationService.syncTasksWithServiceWorker(updated);
   };
 
   const deleteTask = (taskId: string) => {
     const updated = tasks.filter(t => t.id !== taskId);
     setTasksState(updated);
     storageService.saveTasks(updated);
+    notificationService.syncTasksWithServiceWorker(updated);
   };
 
   const resetDailyTasksManual = () => {
     const updated = tasks.map(t => (t.type === 'daily' ? { ...t, completed: false, completedAt: undefined } : t));
     setTasksState(updated);
     storageService.saveTasks(updated);
+    notificationService.syncTasksWithServiceWorker(updated);
   };
 
-  // Transactions Management (in ETB)
+  // Transactions Management (in ETB with Required Reason)
   const addTransaction = (tx: Omit<Transaction, 'id'>) => {
+    const trimmedReason = (tx.reason || '').trim();
+    if (!trimmedReason) {
+      addBanner({
+        type: 'info',
+        title: 'Reason Required',
+        message: 'A reason is required to record every transaction (e.g. bought a phone charger, bus fare to meeting).',
+      });
+      return;
+    }
+
     const newTx: Transaction = {
       ...tx,
+      reason: trimmedReason,
+      note: tx.note?.trim() || trimmedReason,
       id: `tx-${Date.now()}`,
     };
     const updated = [newTx, ...transactions];

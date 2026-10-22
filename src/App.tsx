@@ -5,13 +5,12 @@ import { BottomNav } from './components/common/BottomNav';
 import { SmallBannerList } from './components/common/SmallBanner';
 import { ProfileModal } from './components/common/ProfileModal';
 import { ProjectIntakeModal } from './components/intake/ProjectIntakeModal';
-import { AppLockShieldModal } from './components/time/AppLockShieldModal';
 import { TimeManagementTab } from './components/time/TimeManagementTab';
 import { TasksTab } from './components/tasks/TasksTab';
 import { FinanceTab } from './components/finance/FinanceTab';
 
 export const AppContent: React.FC = () => {
-  const { activeTab, activeLockedApp, setActiveLockedApp } = useApp();
+  const { activeTab } = useApp();
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 ease-in-out font-sans selection:bg-sky-500 selection:text-white">
@@ -35,12 +34,6 @@ export const AppContent: React.FC = () => {
 
       {/* Imako Solution Project Intake & Antigravity Prompt Generator Wizard */}
       <ProjectIntakeModal />
-
-      {/* Functional App Lock Shield (When a blocked app is triggered) */}
-      <AppLockShieldModal
-        app={activeLockedApp}
-        onClose={() => setActiveLockedApp(null)}
-      />
 
       {/* Bottom Pinned Tab Bar */}
       <BottomNav />

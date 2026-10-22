@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { FinanceCategory, TransactionType } from '../../types';
-import { X, Calendar, Tag, FileText, Plus } from 'lucide-react';
+import { X, Calendar, Tag, FileText, Plus, AlertCircle } from 'lucide-react';
 
 interface AddTransactionModalProps {
   isOpen: boolean;
@@ -17,33 +17,51 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [category, setCategory] = useState<FinanceCategory>('Clients');
+  const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setHasAttemptedSubmit(true);
+
     const num = parseFloat(amount);
     if (isNaN(num) || num <= 0) return;
+
+    if (!reason.trim()) {
+      addBanner({
+        type: 'info',
+        title: 'Reason is Required',
+        message: 'Please enter a reason for this transaction (e.g. "bought a phone charger", "bus fare to meeting").',
+      });
+      return;
+    }
 
     addTransaction({
       amount: num,
       date,
       category,
       type,
-      note: note.trim() || `${category} ${type}`,
+      reason: reason.trim(),
+      note: note.trim() || reason.trim(),
     });
 
     addBanner({
       type: 'info',
       title: `${type === 'income' ? 'Income Added (+)' : 'Expense Deducted (-)'}`,
-      message: `ETB ${num.toLocaleString()} for ${category}`,
+      message: `ETB ${num.toLocaleString()} for ${category} • Reason: "${reason.trim()}"`,
     });
 
     setAmount('');
+    setReason('');
     setNote('');
+    setHasAttemptedSubmit(false);
     onClose();
   };
+
+  const isReasonInvalid = hasAttemptedSubmit && !reason.trim();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
@@ -126,6 +144,38 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             </div>
           </div>
 
+          {/* REQUIRED REASON FIELD - ALWAYS VISIBLE */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                Reason <span className="text-rose-500">* Required</span>
+              </label>
+              {isReasonInvalid && (
+                <span className="text-[10px] font-bold text-rose-500 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> Cannot be empty
+                </span>
+              )}
+            </div>
+            <div className="relative">
+              <Tag className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+              <input
+                type="text"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder='e.g. "bought a phone charger", "paid client invoice", "bus fare to meeting"'
+                className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:outline-none font-medium transition-colors ${
+                  isReasonInvalid
+                    ? 'border-rose-400 bg-rose-50/50 dark:bg-rose-950/30 focus:ring-2 focus:ring-rose-500'
+                    : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 focus:ring-2 focus:ring-sky-500'
+                }`}
+                required
+              />
+            </div>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+              Every income or expense must have a specific reason to track your financial habits.
+            </p>
+          </div>
+
           {/* Category: strictly Transport and Clients */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
@@ -175,10 +225,10 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             </div>
           </div>
 
-          {/* Note */}
+          {/* Optional Note */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
-              Description / Note
+              Additional Details (Optional)
             </label>
             <div className="relative">
               <FileText className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -186,7 +236,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 type="text"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="e.g. Imako Solution - website deposit in ETB"
+                placeholder="Optional notes or reference numbers"
                 className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
               />
             </div>
@@ -202,7 +252,8 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             </button>
             <button
               type="submit"
-              className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white rounded-xl shadow-md transition-all active:scale-95"
+              disabled={!amount || !reason.trim()}
+              className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold bg-sky-600 hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl shadow-md transition-all active:scale-95"
             >
               <Plus className="w-4 h-4" />
               <span>Save Entry</span>

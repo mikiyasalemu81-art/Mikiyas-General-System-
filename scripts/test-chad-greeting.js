@@ -21,7 +21,7 @@ async function testGreeting() {
     process.exit(1);
   }
 
-  const systemPrompt = "You are Chad, Mikiyas's personal assistant inside his productivity system. You can chat about anything and you also help with his tasks, time limits, finances, and project intake. Be friendly, clear, and concise. Use the user's stored data as context only when it's relevant to the question.";
+  const systemPrompt = "You are Chad, Mikiyas's personal assistant inside his productivity app. Answer any question clearly and helpfully. You can also help with his tasks, screen-time limits, finances, and client project intake. Be friendly and concise.";
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
