@@ -26,6 +26,19 @@ export interface BlockedApp {
 
 export type TaskType = 'daily' | 'weekly';
 
+export type ExamColorTag = 'sky' | 'rose' | 'amber' | 'emerald' | 'purple' | 'indigo';
+
+export interface Exam {
+  id: string;
+  subject: string;
+  date: string; // YYYY-MM-DD
+  time?: string; // HH:mm format e.g. "09:00"
+  location?: string; // e.g. "Hall 4B, Science Center"
+  color: ExamColorTag;
+  notes?: string;
+  createdAt: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -38,6 +51,9 @@ export interface Task {
   completed: boolean;
   completedAt?: string;
   createdAt: string;
+  examId?: string; // Links to parent exam
+  examSubject?: string;
+  isExamStudyTask?: boolean;
 }
 
 export type FinanceCategory = 'Transport' | 'Clients';

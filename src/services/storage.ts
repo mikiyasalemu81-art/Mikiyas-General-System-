@@ -1,5 +1,5 @@
-import { BlockedApp, Task, Transaction, ProjectIntake, UserProfile } from '../types';
-import { SEED_PROFILE, SEED_APPS, SEED_TASKS, SEED_TRANSACTIONS, SEED_PROJECTS } from '../data/seedData';
+import { BlockedApp, Task, Transaction, ProjectIntake, UserProfile, Exam } from '../types';
+import { SEED_PROFILE, SEED_APPS, SEED_TASKS, SEED_TRANSACTIONS, SEED_PROJECTS, SEED_EXAMS } from '../data/seedData';
 
 // Storage Keys
 const KEYS = {
@@ -8,6 +8,7 @@ const KEYS = {
   TASKS: 'system_mikiyas_tasks',
   TRANSACTIONS: 'system_mikiyas_transactions_v2',
   PROJECTS: 'system_mikiyas_projects',
+  EXAMS: 'system_mikiyas_exams',
   GROQ_API_KEY: 'system_mikiyas_groq_key_v2',
   LAST_DAILY_RESET: 'system_mikiyas_last_daily_reset',
   LAST_WEEKLY_RESET: 'system_mikiyas_last_weekly_reset',
@@ -22,6 +23,10 @@ export interface IStorageService {
 
   getTasks(): Task[];
   saveTasks(tasks: Task[]): void;
+
+  getExams(): Exam[];
+  saveExams(exams: Exam[]): void;
+  deleteExam(examId: string): void;
 
   getTransactions(): Transaction[];
   saveTransactions(transactions: Transaction[]): void;
@@ -56,6 +61,16 @@ class LocalStorageService implements IStorageService {
     }
     if (!localStorage.getItem(KEYS.PROJECTS)) {
       this.saveProjects(SEED_PROJECTS);
+    }
+    if (!localStorage.getItem(KEYS.EXAMS)) {
+      this.saveExams(SEED_EXAMS);
+      // Ensure seed tasks include the exam's study tasks if tasks were previously initialized
+      const existingTasks = this.getTasks();
+      const hasExamTasks = existingTasks.some(t => t.examId === 'exam-seed-1');
+      if (!hasExamTasks) {
+        const seedExamTasks = SEED_TASKS.filter(t => t.examId === 'exam-seed-1');
+        this.saveTasks([...existingTasks, ...seedExamTasks]);
+      }
     }
   }
 
@@ -107,6 +122,32 @@ class LocalStorageService implements IStorageService {
       localStorage.setItem(KEYS.TASKS, JSON.stringify(tasks));
     } catch (e) {
       console.error('Error saving tasks', e);
+    }
+  }
+
+  getExams(): Exam[] {
+    try {
+      const data = localStorage.getItem(KEYS.EXAMS);
+      return data ? JSON.parse(data) : SEED_EXAMS;
+    } catch {
+      return SEED_EXAMS;
+    }
+  }
+
+  saveExams(exams: Exam[]): void {
+    try {
+      localStorage.setItem(KEYS.EXAMS, JSON.stringify(exams));
+    } catch (e) {
+      console.error('Error saving exams', e);
+    }
+  }
+
+  deleteExam(examId: string): void {
+    try {
+      const exams = this.getExams().filter(e => e.id !== examId);
+      this.saveExams(exams);
+    } catch (e) {
+      console.error('Error deleting exam', e);
     }
   }
 

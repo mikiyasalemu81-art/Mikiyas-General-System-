@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { BlockedApp, Task, Transaction, ProjectIntake, UserProfile, BlockMode } from '../types';
+import { BlockedApp, Task, Transaction, ProjectIntake, UserProfile, BlockMode, Exam } from '../types';
 import { storageService } from '../services/storage';
 import { notificationService } from '../services/notifications';
 import { NativeBlockerService } from '../services/nativeBlocker';
 import { isTaskOverdue } from '../utils/taskUtils';
+import { generateExamStudyTasks } from '../utils/examUtils';
 
 export type TabType = 'tasks' | 'finance';
 
@@ -35,9 +36,15 @@ interface AppContextType {
 
   tasks: Task[];
   addTask: (title: string, type: 'daily' | 'weekly', dueDate?: string, dueTime?: string) => void;
+  updateTask: (taskId: string, updates: Partial<Task>) => void;
   toggleTaskCompletion: (taskId: string) => void;
   deleteTask: (taskId: string) => void;
   resetDailyTasksManual: () => void;
+
+  exams: Exam[];
+  addExam: (examData: Omit<Exam, 'id' | 'createdAt'>, customTasks?: Task[]) => Exam;
+  updateExam: (examId: string, updates: Partial<Exam>) => void;
+  deleteExam: (examId: string, deleteTasks?: boolean) => void;
 
   transactions: Transaction[];
   addTransaction: (tx: Omit<Transaction, 'id'>) => void;
@@ -68,6 +75,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [tasks, setTasksState] = useState<Task[]>(() => storageService.getTasks());
   const [transactions, setTransactionsState] = useState<Transaction[]>(() => storageService.getTransactions());
   const [projects, setProjectsState] = useState<ProjectIntake[]>(() => storageService.getProjects());
+  const [exams, setExamsState] = useState<Exam[]>(() => storageService.getExams());
   const [banners, setBanners] = useState<BannerMessage[]>([]);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isIntakeModalOpen, setIsIntakeModalOpen] = useState(false);
@@ -133,6 +141,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const reminderInterval = setInterval(checkReminders, 15000);
     return () => clearInterval(reminderInterval);
   }, [tasks]);
+
+  // Check morning exam reminders at 8:00 AM local time
+  useEffect(() => {
+    notificationService.syncExamsWithServiceWorker(exams);
+
+    const checkExamMorning = () => {
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      const hour = now.getHours();
+
+      // Trigger if it's 8:00 AM or later on exam day
+      if (hour >= 8) {
+        exams.forEach(exam => {
+          if (exam.date === todayStr) {
+            const key = `notified_exam_morning_${exam.id}_${todayStr}`;
+            if (!sessionStorage.getItem(key)) {
+              sessionStorage.setItem(key, 'true');
+              notificationService.sendExamMorningAlert(exam.subject, exam.time, exam.location);
+              addBanner({
+                type: 'reminder',
+                title: `🎓 Exam Today: ${exam.subject}`,
+                message: `Your exam is today${exam.time ? ` at ${exam.time}` : ''}${exam.location ? ` in ${exam.location}` : ''}! Take a deep breath and trust your prep.`,
+              });
+            }
+          }
+        });
+      }
+    };
+
+    checkExamMorning();
+    const interval = setInterval(checkExamMorning, 30000);
+    return () => clearInterval(interval);
+  }, [exams]);
 
   // Sync blocked apps to Android native plugin & desktop Chrome extension storage
   useEffect(() => {
@@ -432,6 +473,95 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     notificationService.syncTasksWithServiceWorker(updated);
   };
 
+  const updateTask = (taskId: string, updates: Partial<Task>) => {
+    const updated = tasks.map(t => {
+      if (t.id === taskId) {
+        const next = { ...t, ...updates };
+        if (updates.dueTime || updates.dueDate) {
+          const targetDate = next.dueDate || new Date().toISOString().split('T')[0];
+          const targetTime = next.dueTime || '18:00';
+          const [h, m] = targetTime.split(':').map(Number);
+          const totalMins = (h || 0) * 60 + (m || 0) - 180;
+          const normalized = (totalMins + 24 * 60) % (24 * 60);
+          const rh = Math.floor(normalized / 60);
+          const rm = normalized % 60;
+          next.reminderTime = `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`;
+          const deadlineMs = new Date(`${targetDate}T${targetTime}:00`).getTime();
+          next.autoReminderAt = new Date(deadlineMs - 3 * 60 * 60 * 1000).toISOString();
+        }
+        return next;
+      }
+      return t;
+    });
+    setTasksState(updated);
+    storageService.saveTasks(updated);
+    notificationService.syncTasksWithServiceWorker(updated);
+  };
+
+  // Exam Calendar Management
+  const addExam = (examData: Omit<Exam, 'id' | 'createdAt'>, customTasks?: Task[]): Exam => {
+    const newExam: Exam = {
+      ...examData,
+      id: `exam-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedExams = [...exams, newExam];
+    setExamsState(updatedExams);
+    storageService.saveExams(updatedExams);
+
+    // Generate study schedule with tasks spread across the days before it
+    const studyTasks = customTasks && customTasks.length > 0 
+      ? customTasks 
+      : generateExamStudyTasks(newExam);
+
+    const updatedTasks = [...studyTasks, ...tasks];
+    setTasksState(updatedTasks);
+    storageService.saveTasks(updatedTasks);
+    notificationService.syncTasksWithServiceWorker(updatedTasks);
+
+    addBanner({
+      type: 'info',
+      title: 'Exam & Study Schedule Created',
+      message: `${newExam.subject} scheduled for ${newExam.date} with ${studyTasks.length} preparation tasks!`,
+    });
+
+    return newExam;
+  };
+
+  const updateExam = (examId: string, updates: Partial<Exam>) => {
+    const updatedExams = exams.map(e => (e.id === examId ? { ...e, ...updates } : e));
+    setExamsState(updatedExams);
+    storageService.saveExams(updatedExams);
+
+    if (updates.subject) {
+      const updatedTasks = tasks.map(t => (t.examId === examId ? { ...t, examSubject: updates.subject } : t));
+      setTasksState(updatedTasks);
+      storageService.saveTasks(updatedTasks);
+      notificationService.syncTasksWithServiceWorker(updatedTasks);
+    }
+  };
+
+  const deleteExam = (examId: string, deleteTasks: boolean = true) => {
+    const targetExam = exams.find(e => e.id === examId);
+    const updatedExams = exams.filter(e => e.id !== examId);
+    setExamsState(updatedExams);
+    storageService.saveExams(updatedExams);
+
+    if (deleteTasks) {
+      const updatedTasks = tasks.filter(t => t.examId !== examId);
+      setTasksState(updatedTasks);
+      storageService.saveTasks(updatedTasks);
+      notificationService.syncTasksWithServiceWorker(updatedTasks);
+    }
+
+    addBanner({
+      type: 'info',
+      title: 'Exam Removed',
+      message: targetExam ? `Exam "${targetExam.subject}" was deleted.` : 'Exam was deleted.',
+    });
+  };
+
   // Transactions Management (in ETB with Required Reason)
   const addTransaction = (tx: Omit<Transaction, 'id'>) => {
     const trimmedReason = (tx.reason || '').trim();
@@ -504,9 +634,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setActiveLockedApp,
         tasks,
         addTask,
+        updateTask,
         toggleTaskCompletion,
         deleteTask,
         resetDailyTasksManual,
+        exams,
+        addExam,
+        updateExam,
+        deleteExam,
         transactions,
         addTransaction,
         deleteTransaction,

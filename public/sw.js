@@ -7,6 +7,7 @@ const ASSETS_TO_CACHE = [
 ];
 
 let scheduledTasks = [];
+let scheduledExams = [];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -83,8 +84,37 @@ function checkScheduledReminders() {
   });
 }
 
+// Check morning 8:00 AM exam alerts
+function checkExamMorningReminders() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const todayStr = `${y}-${m}-${d}`;
+  const hour = now.getHours();
+
+  if (hour >= 8) {
+    scheduledExams.forEach((exam) => {
+      if (exam.date === todayStr && !exam.swMorningNotified) {
+        exam.swMorningNotified = true;
+        self.registration.showNotification(`🎓 Exam Today: ${exam.subject}`, {
+          body: `Your exam is today${exam.time ? ` at ${exam.time}` : ''}${exam.location ? ` in ${exam.location}` : ''}! Stay calm, focused, and trust your preparation.`,
+          icon: '/favicon.svg',
+          badge: '/favicon.svg',
+          tag: `exam-morning-${exam.id}-${todayStr}`,
+          renotify: true,
+          data: { examId: exam.id, url: '/' }
+        });
+      }
+    });
+  }
+}
+
 // Check every 20 seconds
-setInterval(checkScheduledReminders, 20000);
+setInterval(() => {
+  checkScheduledReminders();
+  checkExamMorningReminders();
+}, 20000);
 
 // Receive messages from web app
 self.addEventListener('message', (event) => {
@@ -93,6 +123,9 @@ self.addEventListener('message', (event) => {
   if (event.data.type === 'SCHEDULE_TASK_REMINDERS') {
     scheduledTasks = event.data.tasks || [];
     checkScheduledReminders();
+  } else if (event.data.type === 'SCHEDULE_EXAM_REMINDERS') {
+    scheduledExams = event.data.exams || [];
+    checkExamMorningReminders();
   } else if (event.data.type === 'SHOW_NOTIFICATION') {
     const { title, options } = event.data;
     self.registration.showNotification(title, {

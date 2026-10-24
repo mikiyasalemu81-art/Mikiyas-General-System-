@@ -9,14 +9,16 @@ interface TaskListViewProps {
 }
 
 export const TaskListView: React.FC<TaskListViewProps> = ({ tasks }) => {
-  const [filter, setFilter] = useState<'all' | 'not_done' | 'daily' | 'weekly' | 'pending' | 'completed'>('all');
+  const [filter, setFilter] = useState<'all' | 'not_done' | 'daily' | 'weekly' | 'exam_study' | 'pending' | 'completed'>('all');
 
   const overdueCount = tasks.filter(isTaskOverdue).length;
+  const examStudyTasksCount = tasks.filter(t => t.isExamStudyTask).length;
 
   const filteredTasks = tasks.filter((task) => {
     if (filter === 'not_done') return isTaskOverdue(task);
     if (filter === 'daily') return task.type === 'daily';
     if (filter === 'weekly') return task.type === 'weekly';
+    if (filter === 'exam_study') return task.isExamStudyTask;
     if (filter === 'pending') return !task.completed;
     if (filter === 'completed') return task.completed;
     return true;
@@ -31,6 +33,7 @@ export const TaskListView: React.FC<TaskListViewProps> = ({ tasks }) => {
           ...(overdueCount > 0 ? [{ id: 'not_done', label: `🚨 Not Done (${overdueCount})`, isAlert: true }] : []),
           { id: 'daily', label: `Daily (${tasks.filter(t => t.type === 'daily').length})`, isAlert: false },
           { id: 'weekly', label: `Weekly (${tasks.filter(t => t.type === 'weekly').length})`, isAlert: false },
+          ...(examStudyTasksCount > 0 ? [{ id: 'exam_study', label: `🎓 Exam Prep (${examStudyTasksCount})`, isAlert: false }] : []),
           { id: 'pending', label: `Pending (${tasks.filter(t => !t.completed).length})`, isAlert: false },
           { id: 'completed', label: `Completed (${tasks.filter(t => t.completed).length})`, isAlert: false },
         ].map((item) => (

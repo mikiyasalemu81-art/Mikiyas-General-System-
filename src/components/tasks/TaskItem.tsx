@@ -2,7 +2,7 @@ import React from 'react';
 import { Task } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { isTaskOverdue, getDeadlineTimeInfo } from '../../utils/taskUtils';
-import { Check, Clock, Calendar, Trash2, Repeat, BellRing, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Check, Clock, Calendar, Trash2, Repeat, BellRing, AlertCircle, CheckCircle2, GraduationCap } from 'lucide-react';
 
 interface TaskItemProps {
   task: Task;
@@ -88,6 +88,14 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
               <Repeat className="w-2.5 h-2.5" />
               {task.type}
             </span>
+
+            {/* Exam Prep Tag */}
+            {task.isExamStudyTask && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[10px] uppercase tracking-wider bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300">
+                <GraduationCap className="w-2.5 h-2.5 text-sky-500" />
+                <span>Exam Prep</span>
+              </span>
+            )}
 
             {/* Deadline Time */}
             {(task.dueTime || task.reminderTime) && (

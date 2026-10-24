@@ -1,5 +1,5 @@
 // Browser Notification API and ADHD focus audio chime service
-import { Task } from '../types';
+import { Task, Exam } from '../types';
 
 class NotificationService {
   private audioCtx: AudioContext | null = null;
@@ -210,6 +210,17 @@ class NotificationService {
     });
   }
 
+  // Send morning notification at 8:00 AM on the day of an exam
+  async sendExamMorningAlert(subject: string, time?: string, location?: string): Promise<boolean> {
+    this.playChime('alert');
+    const timeInfo = time ? ` at ${time}` : '';
+    const locInfo = location ? ` (${location})` : '';
+    return await this.showBrowserNotification(`🎓 Exam Today: ${subject}`, {
+      body: `Your ${subject} exam is scheduled for today${timeInfo}${locInfo}! Take a breath, stay calm, and trust your preparation.`,
+      tag: `exam-morning-${subject}-${Date.now()}`,
+    });
+  }
+
   // Sync scheduled tasks with Service Worker for background dispatch
   syncTasksWithServiceWorker(tasks: Task[]) {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
@@ -239,6 +250,28 @@ class NotificationService {
       navigator.serviceWorker.controller.postMessage({
         type: 'SCHEDULE_TASK_REMINDERS',
         tasks: payload
+      });
+    }
+  }
+
+  // Sync scheduled exams with Service Worker for background morning alert
+  syncExamsWithServiceWorker(exams: Exam[]) {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+    const payload = exams.map(e => ({
+      id: e.id,
+      subject: e.subject,
+      date: e.date,
+      time: e.time,
+      location: e.location,
+      color: e.color,
+      swMorningNotified: false
+    }));
+
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'SCHEDULE_EXAM_REMINDERS',
+        exams: payload
       });
     }
   }

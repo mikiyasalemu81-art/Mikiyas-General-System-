@@ -3,9 +3,14 @@ import { useApp } from '../../context/AppContext';
 import { MetricCard } from '../common/MetricCard';
 import { TaskListView } from './TaskListView';
 import { TaskCalendarView } from './TaskCalendarView';
+import { ExamListView } from './ExamListView';
+import { NextExamOverviewCard } from './NextExamOverviewCard';
 import { AddTaskModal } from './AddTaskModal';
+import { AddExamModal } from './AddExamModal';
+import { ExamDetailsModal } from './ExamDetailsModal';
 import { notificationService } from '../../services/notifications';
 import { isTaskOverdue } from '../../utils/taskUtils';
+import { Exam } from '../../types';
 import { 
   CheckSquare, 
   Calendar, 
@@ -16,13 +21,16 @@ import {
   AlertCircle, 
   RotateCcw,
   Sparkles,
-  CheckCircle2
+  CheckCircle2,
+  GraduationCap
 } from 'lucide-react';
 
 export const TasksTab: React.FC = () => {
-  const { tasks, resetDailyTasksManual, addBanner } = useApp();
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const { tasks, exams, resetDailyTasksManual, addBanner } = useApp();
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'exams'>('list');
+  const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
+  const [isAddExamModalOpen, setIsAddExamModalOpen] = useState(false);
+  const [selectedExamForDetails, setSelectedExamForDetails] = useState<Exam | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>(() => 
     notificationService.getPermission()
   );
@@ -38,6 +46,8 @@ export const TasksTab: React.FC = () => {
   const totalCompleted = tasks.filter(t => t.completed).length;
   const weeklyProgressPercent = totalWeekly > 0 ? Math.round((totalCompleted / totalWeekly) * 100) : 0;
 
+  const upcomingExams = exams.filter(e => e.date >= todayStr);
+
   const handleRequestNotifications = async () => {
     const perm = await notificationService.requestPermission();
     setPermissionStatus(perm);
@@ -47,7 +57,7 @@ export const TasksTab: React.FC = () => {
       addBanner({
         type: 'reminder',
         title: 'Notifications Enabled',
-        message: 'Task reminder alarms are now active in this browser.',
+        message: 'Task and exam reminder alarms are now active in this browser.',
       });
     }
   };
@@ -81,27 +91,38 @@ export const TasksTab: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-20 animate-fade-in">
-      {/* 1. TOP OVERVIEW METRICS */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
+      {/* 1. TOP OVERVIEW METRICS & NEXT EXAM CARD */}
+      <section className="space-y-3.5">
+        <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-              Task Execution & Reminders
+              Task Execution & Exam Preparation
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Clear visual progress, deadlines, and automated alarms
+              Clear visual progress, deadlines, countdowns, and automated alarms
             </p>
           </div>
 
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white shadow-md shadow-sky-600/20 active:scale-95 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Task</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsAddExamModalOpen(true)}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 active:scale-95 transition-all"
+            >
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>Add Exam</span>
+            </button>
+
+            <button
+              onClick={() => setIsAddTaskModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white shadow-md shadow-sky-600/20 active:scale-95 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Task</span>
+            </button>
+          </div>
         </div>
 
+        {/* Task Metric Cards Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MetricCard
             label="Today's Tasks"
@@ -136,6 +157,15 @@ export const TasksTab: React.FC = () => {
             icon={<Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
           />
         </div>
+
+        {/* Next Exam Overview Card (ADHD: Shows next exam, countdown & progress before long text) */}
+        <NextExamOverviewCard
+          exams={exams}
+          tasks={tasks}
+          onViewExams={() => setViewMode('exams')}
+          onAddExam={() => setIsAddExamModalOpen(true)}
+          onSelectExam={(ex) => setSelectedExamForDetails(ex)}
+        />
       </section>
 
       {/* 2. NOTIFICATIONS STATUS & TEST CONTROL */}
@@ -151,7 +181,7 @@ export const TasksTab: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h4 className="font-bold text-slate-900 dark:text-white">
-                Task Reminder & Sound System
+                Task & Exam Reminder System
               </h4>
               <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
                 permissionStatus === 'granted'
@@ -162,7 +192,7 @@ export const TasksTab: React.FC = () => {
               </span>
             </div>
             <p className="text-slate-500 dark:text-slate-400 mt-0.5">
-              3h advance alarms + automatic alert when a deadline is missed (Not Done).
+              3h advance alarms for all tasks + 8:00 AM morning exam alert on exam day.
             </p>
           </div>
         </div>
@@ -181,7 +211,7 @@ export const TasksTab: React.FC = () => {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 text-sky-700 dark:text-sky-300 font-bold border border-sky-200 dark:border-sky-800 transition-all active:scale-95"
             >
               <Bell className="w-3.5 h-3.5" />
-              <span>Test Notification (Send Now)</span>
+              <span>Test Notification</span>
             </button>
           )}
           <button
@@ -193,17 +223,17 @@ export const TasksTab: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. VIEW TOGGLE (LIST VS CALENDAR) & RESET CONTROL */}
+      {/* 3. VIEW TOGGLE (LIST VS CALENDAR VS EXAMS) & RESET CONTROL */}
       <section className="space-y-4">
-        <div className="flex items-center justify-between gap-2">
-          {/* List vs Calendar Toggle */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          {/* List vs Calendar vs Exams View Toggle */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
             <button
               onClick={() => setViewMode('list')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 viewMode === 'list'
                   ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               <List className="w-3.5 h-3.5" />
@@ -215,11 +245,28 @@ export const TasksTab: React.FC = () => {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 viewMode === 'calendar'
                   ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               <Calendar className="w-3.5 h-3.5" />
               <span>Calendar View</span>
+            </button>
+
+            <button
+              onClick={() => setViewMode('exams')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                viewMode === 'exams'
+                  ? 'bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>Exams</span>
+              {upcomingExams.length > 0 && (
+                <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono font-extrabold bg-sky-500 text-white">
+                  {upcomingExams.length}
+                </span>
+              )}
             </button>
           </div>
 
@@ -241,18 +288,42 @@ export const TasksTab: React.FC = () => {
           </button>
         </div>
 
-        {/* View Component */}
-        {viewMode === 'list' ? (
-          <TaskListView tasks={tasks} />
-        ) : (
-          <TaskCalendarView tasks={tasks} />
-        )}
+        {/* View Component with Animated Transition (animated transitions between List, Calendar, and Exams) */}
+        <div key={viewMode} className="animate-fade-in transition-all duration-300 ease-out">
+          {viewMode === 'list' && <TaskListView tasks={tasks} />}
+          {viewMode === 'calendar' && (
+            <TaskCalendarView
+              tasks={tasks}
+              exams={exams}
+              onSelectExam={(ex) => setSelectedExamForDetails(ex)}
+            />
+          )}
+          {viewMode === 'exams' && <ExamListView onOpenCalendar={() => setViewMode('calendar')} />}
+        </div>
       </section>
 
       {/* Add Task Modal */}
       <AddTaskModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        isOpen={isAddTaskModalOpen}
+        onClose={() => setIsAddTaskModalOpen(false)}
+      />
+
+      {/* Add Exam Modal */}
+      <AddExamModal
+        isOpen={isAddExamModalOpen}
+        onClose={() => setIsAddExamModalOpen(false)}
+        examToEdit={null}
+      />
+
+      {/* Exam Details Modal (when tapping exam from NextExamOverviewCard) */}
+      <ExamDetailsModal
+        isOpen={!!selectedExamForDetails}
+        exam={selectedExamForDetails}
+        onClose={() => setSelectedExamForDetails(null)}
+        onEditExam={() => {
+          setSelectedExamForDetails(null);
+          setIsAddExamModalOpen(true);
+        }}
       />
     </div>
   );
