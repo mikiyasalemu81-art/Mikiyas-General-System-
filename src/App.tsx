@@ -5,7 +5,6 @@ import { BottomNav } from './components/common/BottomNav';
 import { SmallBannerList } from './components/common/SmallBanner';
 import { ProfileModal } from './components/common/ProfileModal';
 import { ProjectIntakeModal } from './components/intake/ProjectIntakeModal';
-import { TimeManagementTab } from './components/time/TimeManagementTab';
 import { TasksTab } from './components/tasks/TasksTab';
 import { FinanceTab } from './components/finance/FinanceTab';
 
@@ -23,7 +22,6 @@ export const AppContent: React.FC = () => {
       {/* Main Tab Content with smooth animated transitions (slide / fade 250-300ms eased) */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 pt-5 pb-24">
         <div key={activeTab} className="animate-fade-in transition-all duration-300 ease-out">
-          {activeTab === 'time' && <TimeManagementTab />}
           {activeTab === 'tasks' && <TasksTab />}
           {activeTab === 'finance' && <FinanceTab />}
         </div>

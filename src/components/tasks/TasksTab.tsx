@@ -5,6 +5,7 @@ import { TaskListView } from './TaskListView';
 import { TaskCalendarView } from './TaskCalendarView';
 import { AddTaskModal } from './AddTaskModal';
 import { notificationService } from '../../services/notifications';
+import { isTaskOverdue } from '../../utils/taskUtils';
 import { 
   CheckSquare, 
   Calendar, 
@@ -28,10 +29,10 @@ export const TasksTab: React.FC = () => {
 
   const todayStr = new Date().toISOString().split('T')[0];
 
-  // Overview metrics
+  // Overview metrics using precise timestamp comparison
   const todayTasks = tasks.filter(t => t.type === 'daily' || t.dueDate === todayStr);
   const completedToday = todayTasks.filter(t => t.completed).length;
-  const overdueTasks = tasks.filter(t => !t.completed && t.dueDate && t.dueDate < todayStr);
+  const overdueTasks = tasks.filter(t => isTaskOverdue(t));
 
   const totalWeekly = tasks.length;
   const totalCompleted = tasks.filter(t => t.completed).length;
@@ -47,6 +48,24 @@ export const TasksTab: React.FC = () => {
         type: 'reminder',
         title: 'Notifications Enabled',
         message: 'Task reminder alarms are now active in this browser.',
+      });
+    }
+  };
+
+  const handleTestNotification = async () => {
+    notificationService.playChime('alert');
+    const success = await notificationService.sendTestNotification();
+    if (success) {
+      addBanner({
+        type: 'reminder',
+        title: 'Test Notification Dispatched',
+        message: 'Notification was sent! Check your device notification center.',
+      });
+    } else {
+      addBanner({
+        type: 'info',
+        title: 'Notification Alert',
+        message: 'Browser notification blocked or permission needed.',
       });
     }
   };
@@ -70,7 +89,7 @@ export const TasksTab: React.FC = () => {
               Task Execution & Reminders
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Clear visual progress and scheduled alarms
+              Clear visual progress, deadlines, and automated alarms
             </p>
           </div>
 
@@ -101,9 +120,9 @@ export const TasksTab: React.FC = () => {
           />
 
           <MetricCard
-            label="Overdue"
+            label="Not Done / Overdue"
             value={overdueTasks.length}
-            subtext={overdueTasks.length > 0 ? 'Requires attention' : 'All caught up!'}
+            subtext={overdueTasks.length > 0 ? `${overdueTasks.length} missed deadlines` : 'All on schedule'}
             colorTheme={overdueTasks.length > 0 ? 'red' : 'slate'}
             trend={overdueTasks.length > 0 ? 'danger' : 'neutral'}
             icon={<AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400" />}
@@ -119,37 +138,60 @@ export const TasksTab: React.FC = () => {
         </div>
       </section>
 
-      {/* 2. BROWSER NOTIFICATION PERMISSION BANNER */}
-      {permissionStatus !== 'granted' && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-sky-50 to-blue-50 dark:from-sky-950/40 dark:to-blue-950/20 border border-sky-200 dark:border-sky-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-start gap-2.5">
-            <BellRing className="w-5 h-5 text-sky-600 dark:text-sky-400 mt-0.5 shrink-0" />
-            <div>
-              <h4 className="font-bold text-slate-900 dark:text-white">
-                Enable Automatic Task Reminders
-              </h4>
-              <p className="text-slate-600 dark:text-slate-400 mt-0.5">
-                Receive browser alerts 3 hours before every task deadline (and immediate alerts for tasks due in &lt; 3 hours). Works even when the app is closed.
-              </p>
-            </div>
+      {/* 2. NOTIFICATIONS STATUS & TEST CONTROL */}
+      <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-sm">
+        <div className="flex items-center gap-2.5">
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+            permissionStatus === 'granted' 
+              ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/80 dark:text-emerald-400' 
+              : 'bg-amber-100 text-amber-600 dark:bg-amber-950/80 dark:text-amber-400'
+          }`}>
+            <BellRing className="w-4 h-4" />
           </div>
-
-          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-            <button
-              onClick={handleTestChime}
-              className="px-3 py-1.5 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800 font-bold transition-colors"
-            >
-              Test Chime
-            </button>
-            <button
-              onClick={handleRequestNotifications}
-              className="px-4 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold shadow-sm transition-all active:scale-95"
-            >
-              Enable Reminders
-            </button>
+          <div>
+            <div className="flex items-center gap-2">
+              <h4 className="font-bold text-slate-900 dark:text-white">
+                Task Reminder & Sound System
+              </h4>
+              <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                permissionStatus === 'granted'
+                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                  : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+              }`}>
+                {permissionStatus === 'granted' ? 'Active' : 'Permission Needed'}
+              </span>
+            </div>
+            <p className="text-slate-500 dark:text-slate-400 mt-0.5">
+              3h advance alarms + automatic alert when a deadline is missed (Not Done).
+            </p>
           </div>
         </div>
-      )}
+
+        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
+          {permissionStatus !== 'granted' ? (
+            <button
+              onClick={handleRequestNotifications}
+              className="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold shadow-sm transition-all active:scale-95"
+            >
+              Enable Notifications
+            </button>
+          ) : (
+            <button
+              onClick={handleTestNotification}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 text-sky-700 dark:text-sky-300 font-bold border border-sky-200 dark:border-sky-800 transition-all active:scale-95"
+            >
+              <Bell className="w-3.5 h-3.5" />
+              <span>Test Notification (Send Now)</span>
+            </button>
+          )}
+          <button
+            onClick={handleTestChime}
+            className="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold transition-colors"
+          >
+            Test Sound
+          </button>
+        </div>
+      </div>
 
       {/* 3. VIEW TOGGLE (LIST VS CALENDAR) & RESET CONTROL */}
       <section className="space-y-4">

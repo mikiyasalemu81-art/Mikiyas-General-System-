@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Task } from '../../types';
 import { TaskItem } from './TaskItem';
+import { isTaskOverdue } from '../../utils/taskUtils';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, CheckCircle2 } from 'lucide-react';
 
 interface TaskCalendarViewProps {
@@ -119,8 +120,9 @@ export const TaskCalendarView: React.FC<TaskCalendarViewProps> = ({ tasks }) => 
             const isSelected = selectedDateStr === dayDateStr;
             const isToday = todayStr === dayDateStr;
             const dayTasks = getTasksForDate(dayDateStr);
+            const hasOverdue = dayTasks.some((t) => isTaskOverdue(t));
             const hasCompleted = dayTasks.some((t) => t.completed);
-            const hasPending = dayTasks.some((t) => !t.completed);
+            const hasPending = dayTasks.some((t) => !t.completed && !isTaskOverdue(t));
 
             return (
               <button
@@ -148,11 +150,14 @@ export const TaskCalendarView: React.FC<TaskCalendarViewProps> = ({ tasks }) => 
 
                 {/* Task Indicators Dots */}
                 <div className="flex items-center gap-0.5 pb-0.5">
+                  {hasOverdue && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" title="Missed / Overdue task" />
+                  )}
                   {hasPending && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-sky-500" title="Pending task" />
                   )}
                   {hasCompleted && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Completed task" />
                   )}
                 </div>
               </button>

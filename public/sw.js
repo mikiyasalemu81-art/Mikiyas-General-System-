@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mikiyas-system-v2';
+const CACHE_NAME = 'mikiyas-system-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -51,29 +51,42 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Periodic reminder check in service worker for closed/background operation
+// Periodic reminder & deadline check in service worker for background operation
 function checkScheduledReminders() {
   const now = Date.now();
   scheduledTasks.forEach((task) => {
-    if (!task.completed && task.autoReminderTimestamp) {
-      if (now >= task.autoReminderTimestamp && !task.swNotified) {
-        task.swNotified = true;
-        self.registration.showNotification(`⏰ Task Due Soon: ${task.title}`, {
-          body: `Automatic 3-hour reminder: "${task.title}" is due at ${task.dueTime}!`,
-          icon: '/favicon.svg',
-          badge: '/favicon.svg',
-          tag: `task-reminder-${task.id}`,
-          renotify: true,
-          data: { taskId: task.id, url: '/' }
-        });
-      }
+    // 1. 3-hour advance reminder
+    if (task.autoReminderTimestamp && now >= task.autoReminderTimestamp && now < (task.deadlineTimestamp || Infinity) && !task.swNotified) {
+      task.swNotified = true;
+      self.registration.showNotification(`⏰ Task Due in 3 Hours: ${task.title}`, {
+        body: `Upcoming deadline at ${task.dueTime}! Finish your task on schedule.`,
+        icon: '/favicon.svg',
+        badge: '/favicon.svg',
+        tag: `task-reminder-${task.id}`,
+        renotify: true,
+        data: { taskId: task.id, url: '/' }
+      });
+    }
+
+    // 2. Deadline passed alert (Not Done)
+    if (task.deadlineTimestamp && now > task.deadlineTimestamp && !task.swOverdueNotified) {
+      task.swOverdueNotified = true;
+      self.registration.showNotification(`🚨 Task Missed (Not Done): ${task.title}`, {
+        body: `Deadline was ${task.dueTime}. This task is past due and marked as Not Done!`,
+        icon: '/favicon.svg',
+        badge: '/favicon.svg',
+        tag: `task-overdue-${task.id}`,
+        renotify: true,
+        data: { taskId: task.id, url: '/' }
+      });
     }
   });
 }
 
-setInterval(checkScheduledReminders, 30000);
+// Check every 20 seconds
+setInterval(checkScheduledReminders, 20000);
 
-// Receive scheduled tasks from the web app
+// Receive messages from web app
 self.addEventListener('message', (event) => {
   if (!event.data) return;
 
@@ -82,7 +95,11 @@ self.addEventListener('message', (event) => {
     checkScheduledReminders();
   } else if (event.data.type === 'SHOW_NOTIFICATION') {
     const { title, options } = event.data;
-    self.registration.showNotification(title, options);
+    self.registration.showNotification(title, {
+      icon: '/favicon.svg',
+      badge: '/favicon.svg',
+      ...options
+    });
   }
 });
 

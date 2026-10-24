@@ -3,8 +3,9 @@ import { BlockedApp, Task, Transaction, ProjectIntake, UserProfile, BlockMode } 
 import { storageService } from '../services/storage';
 import { notificationService } from '../services/notifications';
 import { NativeBlockerService } from '../services/nativeBlocker';
+import { isTaskOverdue } from '../utils/taskUtils';
 
-export type TabType = 'time' | 'tasks' | 'finance';
+export type TabType = 'tasks' | 'finance';
 
 export interface BannerMessage {
   id: string;
@@ -61,7 +62,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('time');
+  const [activeTab, setActiveTab] = useState<TabType>('tasks');
   const [profile, setProfileState] = useState<UserProfile>(() => storageService.getProfile());
   const [apps, setAppsState] = useState<BlockedApp[]>(() => storageService.getApps());
   const [tasks, setTasksState] = useState<Task[]>(() => storageService.getTasks());
@@ -111,6 +112,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 message: task.title,
               });
             }
+          }
+
+          // Trigger missed deadline alert when deadline has passed (Not Done status)
+          const missedKey = `notified_missed_${task.id}`;
+          if (isTaskOverdue(task) && !sessionStorage.getItem(missedKey)) {
+            sessionStorage.setItem(missedKey, 'true');
+            notificationService.sendDeadlineMissedNotification(task.title, task.dueTime);
+            addBanner({
+              type: 'reminder',
+              title: `Task Deadline Missed (${task.dueTime})`,
+              message: `"${task.title}" has passed its deadline and is marked as Not Done!`,
+            });
           }
         }
       });
